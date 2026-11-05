@@ -3,9 +3,9 @@
 Une carte de planning pour des programmations ponctuelles, des horaires récurrents
 et des périodes d'exclusion. Elle n'est pas limitée à la chauffe.
 
-**Version 0.4.0** : plusieurs horaires habituels, couleur et sélection des appareils
-par programmation. La mise à jour HACS installe la carte ; le blueprint Frech et
-son catalogue se configurent séparément.
+**Version 0.5.0** : gestion des appareils depuis la carte et personnalisation de
+l’affichage. Les associations techniques sont enregistrées dans une automatisation
+Home Assistant ; les appareils peuvent ensuite être choisis dans chaque programmation.
 
 **Le planning démarre entièrement vide** : aucun groupe, aucun horaire, aucune
 exclusion et aucun événement de démonstration. Les formulaires n'imposent aucune
@@ -17,7 +17,7 @@ date ou heure préremplie. Le mode local ne crée rien dans Home Assistant.
 
 1. Dans **HACS → ⋮ → Dépôts personnalisés**, ajouter
    `https://github.com/Euro-Locks-Belgium/ha-planning-card`, type **Dashboard**.
-2. Télécharger ou mettre à jour **Planning** vers **v0.4.0**.
+2. Télécharger ou mettre à jour **Planning** vers **v0.5.0**.
 3. Recharger complètement le navigateur ou l'application Home Assistant.
 4. Ajouter la carte **Planning**, ou une carte manuelle :
 
@@ -37,7 +37,7 @@ Si votre carte a un titre personnalisé, vous pouvez le modifier dans son édite
 
 ### Migration depuis la version 0.2.0 ou précédente
 
-- Utiliser la nouvelle adresse du dépôt dans HACS, puis télécharger **v0.4.0**.
+- Utiliser la nouvelle adresse du dépôt dans HACS, puis télécharger **v0.5.0**.
 - GitHub redirige l'ancienne adresse et conserve l'historique du dépôt.
 - Vérifier la ressource JavaScript ci-dessous : si HA référence toujours l'ancien
   dossier ou l'ancien fichier, remplacer cette entrée par le nouveau chemin.
@@ -182,12 +182,107 @@ si la carte est imbriquée dans une pile ou une carte grille.
 - En mode connecté, programmer au moins **20 minutes à l'avance** : les
   déclencheurs calendrier peuvent nécessiter environ 15 minutes d'actualisation.
 
+## Gérer les appareils depuis la carte
+
+Le nouvel onglet **Appareils** permet d’ajouter, modifier, désactiver ou supprimer
+un appareil sans éditer de YAML. Les identifiants sont générés automatiquement et
+restent stables lors d’un renommage. L’ordre des appareils reste également stable.
+
+Trois types sont disponibles :
+
+| Type | Configuration | Démarrage |
+| --- | --- | --- |
+| Interrupteur / relais | Nom et entité `switch` | Activation et attente de confirmation `on` |
+| Script Home Assistant | Nom et entité `script` | Appel direct sans paramètre, avec attente de fin |
+| Frech avec contrôle d’entrée | Nom, relais, entrée, script et numéro | Appel du script existant avec ses paramètres Frech |
+
+### Association initiale
+
+La mise à jour HACS installe la carte. Pour activer la gestion technique, configurer
+une fois le nouveau blueprint :
+
+1. Importer [Planning — appareils configurables](https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/v0.5.0/blueprints/planning-devices.yaml).
+2. Créer une seule automatisation pour le calendrier. Laisser le catalogue vide
+   et conserver **Mode test = activé**.
+3. Dans l’éditeur de la carte, choisir ce calendrier et cette automatisation dans
+   **Automatisation des appareils**.
+4. Ouvrir **Appareils → Ajouter un appareil**. Choisir le type et les entités,
+   vérifier le récapitulatif, puis enregistrer.
+5. Dans une programmation, cocher les appareils souhaités.
+
+```yaml
+type: custom:ha-planning-card
+calendar: calendar.mon_planning
+execution_automation: automation.mon_planning_appareils
+```
+
+Les associations techniques sont enregistrées dans le catalogue de l’automatisation
+via l’API de configuration native de Home Assistant. Elles restent utilisables
+quand le navigateur est fermé. Cette API réserve les lectures et modifications
+de configuration aux administrateurs HA. Le mode local de la carte conserve tout
+en mémoire et n’effectue aucune requête de configuration.
+
+Les utilisateurs classiques peuvent choisir les appareils actifs dans leurs
+programmations. Ils ne peuvent pas changer les associations techniques. La carte
+leur fournit une liste partagée de noms/identifiants, publiée dans le même
+calendrier sous forme d’un événement technique daté du 1er janvier 2000. Cette
+liste n’est jamais utilisée par le blueprint pour choisir un relais ou un script :
+seul le catalogue protégé de l’automatisation définit les commandes.
+
+Un appareil désactivé ou retiré bloque les programmations qui le contiennent. Les
+événements sont conservés pour pouvoir corriger leur sélection. Un renommage ne
+change pas les associations des programmations existantes.
+
+La sauvegarde recharge la configuration de l’automatisation. La carte bloque cette
+opération pendant une séquence et vérifie que la configuration n’a pas changé
+depuis l’ouverture. La relecture n’est pas un verrou transactionnel entre clients.
+Les autres réglages de l’automatisation, dont le mode test, sont conservés.
+
+La configuration d’exécution est enregistrée avant la liste d’affichage. Si sa
+publication échoue, la désactivation reste effective côté serveur ; le bouton
+**Partager la liste** permet de synchroniser l’affichage sans réactiver l’appareil.
+
+Les blueprints historiques `planning-frech.yaml`, `planning.yaml` et
+`planning-chauffe.yaml` restent compatibles avec leurs configurations existantes.
+La nouvelle gestion technique exige une automatisation utilisant
+`planning-devices.yaml` ; elle ne modifie pas les anciennes automatisations.
+
+## Personnaliser l’affichage
+
+Dans l’éditeur visuel de la carte, ouvrir **Personnalisation**. Les options sont
+inspirées de [Daylight Calendar Card](https://github.com/superdingo101/daylight-calendar-card)
+et de sa [documentation](https://docs.daylightcalendar.com/introduction).
+
+- Vues **Mois**, **Semaine** et **Agenda**, avec choix de la vue initiale.
+- Bouton **Aujourd’hui**, navigation par semaine en vue Semaine et par mois ailleurs.
+- Premier jour lundi ou dimanche, affichage facultatif des week-ends.
+- Heures au format 12 ou 24 heures ; les formulaires conservent une saisie 24 heures.
+- Densité confortable ou compacte.
+- Événements avec fond coloré, contour coloré ou repère de couleur.
+- Couleur d’accent facultative et noms d’appareils en vues semaine/agenda.
+
+```yaml
+appearance:
+  default_view: week
+  first_day: 1
+  time_format: "24"
+  density: compact
+  event_style: outline
+  show_weekends: false
+  show_device_names: true
+  accent_color: "#007fa4"
+```
+
+Les réglages modifient l’affichage, sans modifier les événements ni les commandes.
+La carte conserve son fichier JavaScript autonome et ne charge pas Daylight à
+l’exécution. Voir [les références](THIRD_PARTY_NOTICES.md).
+
 ## Exécuter des actions côté Home Assistant
 
 La carte enregistre des événements. **Le blueprint s'importe séparément** ; HACS
 ne crée pas automatiquement de calendrier ni d'automatisation.
 
-### Démarrage Frech avec sélection par programmation
+### Démarrage Frech historique (parcours 0.4)
 
 Le nouveau fichier [`blueprints/planning-frech.yaml`](blueprints/planning-frech.yaml)
 est prévu pour une seule automatisation par calendrier, même si la carte utilise
@@ -221,11 +316,11 @@ devices:
     name: Machine B
 ```
 
-**Gestion des appareils :** l’éditeur de carte permet de modifier les noms et
-identifiants proposés. Les associations techniques (relais, entrée, numéro) restent
-dans le catalogue du blueprint. Un écran unique de configuration technique n’est
-pas inclus dans cette version. Retirer un appareil de la carte ne le retire pas
-du blueprint et ne supprime pas ses programmations existantes.
+**Gestion des appareils dans ce parcours historique :** l’éditeur de carte gère
+les noms et identifiants ; les associations techniques restent dans le catalogue
+du blueprint Frech. Pour les modifier depuis l’onglet Appareils, utiliser le
+nouveau parcours `planning-devices.yaml` décrit plus haut. Retirer un nom de
+l’ancienne liste de carte ne modifie pas son catalogue d’exécution.
 
 Catalogue correspondant dans le blueprint :
 
@@ -350,3 +445,7 @@ les opérations calendrier, les exclusions, le fuseau du site, les échecs rése
 les modifications concurrentes et le redimensionnement. Ils utilisent une API
 Home Assistant simulée. Les tests de blueprint vérifient ses templates et ses
 branches avec des services simulés, pas l'ensemble du moteur Home Assistant.
+
+`node test/devices-browser.mjs` vérifie en plus les trois types d’appareils,
+la sauvegarde dans l’automatisation, la sélection dans une programmation,
+le renommage, la désactivation, les permissions et les vues personnalisées.

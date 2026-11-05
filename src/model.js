@@ -1,3 +1,4 @@
+import { normalizeAppearance } from './views.js';
 export const MIN_LEAD_MINUTES = 20;
 export const META_VERSION = 1;
 export function newEventId() {
@@ -103,7 +104,9 @@ export function validateConfig(input) {
   if (config.title === 'Planning de chauffe') config.title = 'Planning';
   config.groups = (input.groups || DEFAULT_GROUPS).map(g => ({ name: String(g.name || '').trim(), calendar: g.calendar || '' }));
   if (input.devices !== undefined && !Array.isArray(input.devices)) throw new Error('La liste des appareils est invalide.');
-  config.devices = (input.devices || []).map(d => ({ id: String(d.id || '').trim(), name: String(d.name || '').trim() }));
+  config.devices = (input.devices || []).map(d => ({ ...d, id: String(d.id || '').trim(), name: String(d.name || '').trim() }));
+  config.appearance = normalizeAppearance(input.appearance);
+  if (config.execution_automation && (!/^automation\.[a-z0-9_]+$/.test(config.execution_automation) || !config.calendar)) throw new Error('Choisissez un calendrier unique et une automatisation de gestion des appareils.');
   if (config.devices.some(d => !/^[a-z0-9_]+$/.test(d.id) || !d.name)) throw new Error('Chaque appareil doit avoir un nom et un identifiant (lettres minuscules, chiffres, _).');
   if (new Set(config.devices.map(d => d.id)).size !== config.devices.length) throw new Error('Les identifiants des appareils doivent être distincts.');
   if (config.groups.length > 8) throw new Error('Configurez au maximum 8 groupes.');
@@ -124,7 +127,7 @@ export function resolveGroups(config, calendarLabel = '') {
   if (!named.length) return [{ name: calendarLabel || 'Calendrier', calendar: config.calendar, id: '' }];
   return named.map(g => ({ ...g, calendar: config.calendar, id: g.name }));
 }
-export function validateDraft(draft, events, zone, now = Date.now(), demo = false) {
+export function validateDraft(draft, events, zone, now = Date.now(), demo = false, devices) {
   const start = Date.parse(draft.start), end = Date.parse(draft.end);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 'La fin doit être après le début.';
   if (draft.kind === 'closure') return draft.summary?.trim() ? '' : 'Donnez un libellé à la période d’exclusion.';
@@ -132,6 +135,7 @@ export function validateDraft(draft, events, zone, now = Date.now(), demo = fals
   if (isClosed(events, draft.start) && draft.kind === 'restart') return 'Cette programmation se trouve pendant une exclusion. Modifiez la date ou l’exclusion.';
   if (draft.color && !/^#[0-9a-f]{6}$/i.test(draft.color)) return 'Choisissez une couleur valide.';
   if (draft.devices !== undefined && (!Array.isArray(draft.devices) || !draft.devices.length || draft.devices.some(id => typeof id !== 'string' || !/^[a-z0-9_]+$/.test(id)) || new Set(draft.devices).size !== draft.devices.length)) return 'Sélectionnez au moins un appareil valide.';
+  if (devices && draft.devices?.some(id => !devices.some(device => device.id === id && device.enabled !== false))) return 'Un appareil sélectionné est désactivé ou retiré. Modifiez la sélection.';
   const conflict = events.some(e => {
     if (e.uid === draft.uid || e.calendar !== draft.calendar || !e.meta || !['weekly', 'restart'].includes(e.meta.kind)) return false;
     const draftMeta = { id: draft.event_id, replace_series: draft.replace_series, replace: draft.replace, devices: draft.devices };
@@ -158,12 +162,12 @@ export function nextWeekly(day, time, zone, now = Date.now()) {
   if (Date.parse(instant) < now + MIN_LEAD_MINUTES * 60000) instant = toInstant(`${shiftDay(date, 7)}T${time}`, zone);
   return instant;
 }
-export function viewRange(month) {
-  const first = `${month}-01`, start = shiftDay(first, -((weekday(first) + 6) % 7));
+export function viewRange(month, firstDay = 1) {
+  const first = `${month}-01`, offset = (weekday(first) - firstDay + 7) % 7, start = shiftDay(first, -offset);
   const d = new Date(`${first}T12:00:00Z`);
   d.setUTCMonth(d.getUTCMonth() + 1);
   const days = Math.round((Date.parse(d.toISOString().slice(0, 10)) - Date.parse(first)) / 86400000);
-  const count = Math.ceil((((weekday(first) + 6) % 7) + days) / 7) * 7;
+  const count = Math.ceil((offset + days) / 7) * 7;
   return { start, end: shiftDay(start, count), count, queryStart: shiftDay(start, -7), queryEnd: shiftDay(start, count + 7) };
 }
 export function emptyLocalState(zone, now = Date.now()) {

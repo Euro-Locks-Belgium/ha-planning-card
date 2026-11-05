@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0 — 2026-11-05
+
+- Onglet Appareils : ajout, modification, désactivation et suppression depuis la carte.
+- Relais simple, script sans paramètre et Frech avec contrôle d’entrée/script existant.
+- Nouveau blueprint `planning-devices.yaml` et catalogue protégé dans l’automatisation HA.
+- Gestion technique administrateur ; liste de noms/identifiants partagée dans le même calendrier.
+- Sauvegarde vérifiée, conservation des autres réglages, détection des modifications concurrentes.
+- Blocage des programmations contenant un appareil désactivé ou retiré.
+- Vues mois, semaine et agenda, navigation et bouton Aujourd’hui.
+- Personnalisation inspirée de Daylight : densité, format des heures, premier jour, week-ends, styles et accent.
+- Construction JavaScript indépendante des fins de ligne Windows.
+- 38 tests de logique, 52 scénarios de blueprint et deux parcours navigateur avec services simulés.
+- Blueprints historiques conservés ; le nouveau parcours se configure séparément.
+
 ## 0.4.0 — 2026-11-05
 
 - Menus heures/minutes avec pas de 10 minutes ; anciennes minutes conservées lors d'une modification.

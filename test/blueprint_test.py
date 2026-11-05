@@ -123,14 +123,17 @@ class Runner:
                     rows = [e for e in self.events[entity] if dt(e['start']) < dt(data['end_date_time']) and dt(e['end']) > dt(data['start_date_time'])]
                     self.context[step['response_variable']] = {} if self.broken_response else {entity: {'events': rows}}
                 elif service == 'switch.turn_on':
-                    for entity in target['entity_id']:
+                    targets = target['entity_id']
+                    for entity in ([targets] if isinstance(targets, str) else targets):
                         self.states[entity] = 'on'
                 elif service.startswith('script.'):
                     # The real script stays on HA. Mock its blocking duration,
                     # and optionally inject an external change between machines.
-                    self.now += timedelta(seconds=data['wait_time'])
+                    self.now += timedelta(seconds=data.get('wait_time', 0))
                     if getattr(self, 'after_script', None):
                         self.after_script(self)
+                if (service.startswith('script.') or service.startswith('switch.')) and getattr(self, 'after_command', None):
+                    self.after_command(self)
     def run(self):
         for k, v in self.blueprint['variables'].items():
             self.context[k] = self.render(v)

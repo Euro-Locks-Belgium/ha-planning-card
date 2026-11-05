@@ -1,0 +1,347 @@
+blueprint:
+  name: Planning — appareils configurables
+  description: >-
+    Appareils gérés depuis la carte Planning : relais simple, script, ou Frech avec
+    contrôle d'entrée. Un seul calendrier, une seule automatisation et un catalogue
+    protégé dans cette configuration. Les événements contiennent uniquement des
+    identifiants. Le mode test est activé par défaut. La liste publiée dans le
+    calendrier ne fournit jamais les entités à exécuter. Modifier les appareils
+    uniquement quand aucune séquence n'est en cours.
+  domain: automation
+  author: Euro-Locks Belgium
+  source_url: https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/main/blueprints/planning-devices.yaml
+  homeassistant:
+    min_version: "2026.10.0"
+  input:
+    group_name:
+      name: Libellé des notifications (facultatif)
+      description: Laisser vide pour utiliser le nom du calendrier.
+      default: ""
+      selector:
+        text: {}
+    planning_calendar:
+      name: Calendrier du planning
+      selector:
+        entity:
+          filter:
+            domain: calendar
+    machine_catalog:
+      name: Catalogue des machines
+      description: >-
+        Catalogue administrateur : type, name, enabled et paramètres de démarrage.
+        Laisser vide à la création, puis gérer les appareils depuis la carte.
+      default: {}
+      selector:
+        object: {}
+    wait_time:
+      name: Attente du script (secondes)
+      default: 10
+      selector:
+        number:
+          min: 1
+          max: 100
+          mode: box
+    interval_seconds:
+      name: Pause entre machines (secondes)
+      default: 60
+      selector:
+        number:
+          min: 0
+          max: 600
+          mode: box
+    test_mode:
+      name: Mode test (notifications uniquement)
+      default: true
+      selector:
+        boolean: {}
+
+mode: queued
+max: 50
+max_exceeded: warning
+
+variables:
+  group_name: !input group_name
+  planning_calendar: !input planning_calendar
+  notification_label: "{{ group_name or state_attr(planning_calendar, 'friendly_name') or planning_calendar }}"
+  machine_catalog: !input machine_catalog
+  wait_time: !input wait_time
+  interval_seconds: !input interval_seconds
+  test_mode: !input test_mode
+
+triggers:
+  - trigger: calendar
+    event: start
+    entity_id: !input planning_calendar
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger is defined and trigger.platform == 'calendar'
+         and states(planning_calendar) in ['on', 'off']
+         and 0 <= as_timestamp(now()) - as_timestamp(trigger.calendar_event.start, 0) < 90 }}
+
+actions:
+  - variables:
+      event_meta: "{{ trigger.calendar_event.description | default('', true) | from_json({}) }}"
+      event_ts: "{{ as_timestamp(trigger.calendar_event.start, 0) }}"
+      notification_id: "{{ 'planning_' ~ (planning_calendar | replace('.', '_')) ~ '_' ~ (event_meta.get('id', event_ts | string) if event_meta is mapping else event_ts | string) }}"
+      cycle_start: >-
+        {% set local_start = as_local(as_datetime(trigger.calendar_event.start)) %}
+        {{- local_start.replace(hour=0, minute=0, second=0, microsecond=0)
+           - timedelta(days=(local_start.weekday() + 1) % 7) -}}
+  - condition: template
+    value_template: >-
+      {{ event_meta is mapping and event_meta.get('planning_chauffe') == 1
+         and event_meta.get('kind') in ['weekly', 'restart'] }}
+  - action: calendar.get_events
+    target:
+      entity_id: !input planning_calendar
+    data:
+      start_date_time: "{{ trigger.calendar_event.start }}"
+      end_date_time: "{{ (as_datetime(trigger.calendar_event.start) + timedelta(seconds=1)).isoformat() }}"
+    response_variable: closure_response
+  - condition: template
+    value_template: >-
+      {{ closure_response is mapping and planning_calendar in closure_response
+         and closure_response[planning_calendar] is mapping
+         and closure_response[planning_calendar].get('events') is sequence
+         and closure_response[planning_calendar].get('events') is not string
+         and closure_response[planning_calendar].get('events') is not mapping }}
+  - variables:
+      closure_active: >-
+        {%- set ns = namespace(active=false) -%}
+        {%- for item in closure_response[planning_calendar]['events'] -%}
+          {%- set meta = item.description | default('', true) | from_json({}) -%}
+          {%- if meta is mapping and meta.get('planning_chauffe') == 1
+                and meta.get('kind') == 'closure'
+                and (as_timestamp(item.start, 0) <= 0
+                     or as_timestamp(item.end, 0) <= as_timestamp(item.start, 0)
+                     or as_timestamp(item.start, 0) <= (event_ts | float) < as_timestamp(item.end, 0)) -%}
+            {%- set ns.active = true -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {{- ns.active -}}
+  - choose:
+      - conditions: "{{ closure_active }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "{{ notification_label }} : démarrage bloqué"
+              message: Une exclusion est active à l'heure prévue. Aucun relais n'a été commandé.
+          - stop: Exclusion active
+  - action: calendar.get_events
+    target:
+      entity_id: !input planning_calendar
+    data:
+      start_date_time: "{{ cycle_start }}"
+      end_date_time: "{{ (as_datetime(cycle_start) + timedelta(days=7)).isoformat() }}"
+    response_variable: group_response
+  - condition: template
+    value_template: >-
+      {{ group_response is mapping and planning_calendar in group_response
+         and group_response[planning_calendar] is mapping
+         and group_response[planning_calendar].get('events') is sequence
+         and group_response[planning_calendar].get('events') is not string
+         and group_response[planning_calendar].get('events') is not mapping }}
+  - variables:
+      event_still_present: >-
+        {%- set ns = namespace(found=false) -%}
+        {%- for item in group_response[planning_calendar]['events'] -%}
+          {%- set meta = item.description | default('', true) | from_json({}) -%}
+          {%- if meta is mapping and meta == event_meta
+                and as_timestamp(item.start, 0) == (event_ts | float) -%}
+            {%- set ns.found = true -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {{- ns.found -}}
+  - condition: template
+    value_template: "{{ event_still_present }}"
+  - variables:
+      weekly_replaced: >-
+        {%- set ns = namespace(replaced=false) -%}
+        {%- if event_meta.get('kind') == 'weekly' -%}
+          {%- for item in group_response[planning_calendar]['events'] -%}
+            {%- set meta = item.description | default('', true) | from_json({}) -%}
+            {%- if meta is mapping and meta.get('planning_chauffe') == 1
+                  and meta.get('kind') == 'restart'
+                  and meta.get('group', '') == event_meta.get('group', '')
+                  and ((meta.get('replace_series') and meta.get('replace_series') == event_meta.get('id'))
+                       or (not meta.get('replace_series') and (meta.get('replace') == true
+                         or ('devices' not in meta and as_timestamp(item.start, 0) == (event_ts | float)))))
+                  and as_timestamp(cycle_start) <= as_timestamp(item.start, 0)
+                    < as_timestamp(as_datetime(cycle_start) + timedelta(days=7)) -%}
+              {%- set ns.replaced = true -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {{- ns.replaced -}}
+  - choose:
+      - conditions: "{{ weekly_replaced }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "{{ notification_label }} : horaire remplacé"
+              message: Une reprise ponctuelle remplace ce démarrage habituel pour le cycle. Aucun relais n'a été commandé.
+          - stop: Horaire remplacé
+  - variables:
+      requested_devices: "{{ event_meta.get('devices', []) }}"
+      selection_valid: >-
+        {%- set ns = namespace(valid=true) -%}
+        {%- if requested_devices is not sequence or requested_devices is string
+              or requested_devices is mapping or requested_devices | count == 0
+              or machine_catalog is not mapping -%}
+          {%- set ns.valid = false -%}
+        {%- else -%}
+          {%- for device in requested_devices -%}
+            {%- if device is not string or device not in machine_catalog -%}
+              {%- set ns.valid = false -%}
+            {%- else -%}
+              {%- set m = machine_catalog[device] -%}
+              {%- if m is not mapping or m.get('type') not in ['switch','script','frech']
+                    or m.get('enabled', true) is not true -%}
+                {%- set ns.valid = false -%}
+              {%- elif (m.type != 'script' and not (m.get('switch_entity', '') is match('^switch[.][a-z0-9_]+$')))
+                    or (m.type != 'switch' and not (m.get('script_entity', '') is match('^script[.][a-z0-9_]+$')))
+                    or (m.type == 'frech' and (not (m.get('input_entity', '') is match('^binary_sensor[.][a-z0-9_]+$'))
+                      or m.get('frech_number') is not integer or not 1 <= m.get('frech_number', 0) <= 21)) -%}
+                {%- set ns.valid = false -%}
+              {%- endif -%}
+            {%- endif -%}
+          {%- endfor -%}
+          {%- if ns.valid and requested_devices | unique | list | count != requested_devices | count -%}
+            {%- set ns.valid = false -%}
+          {%- endif -%}
+        {%- endif -%}
+        {{- ns.valid -}}
+  - choose:
+      - conditions: "{{ not selection_valid }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "{{ notification_label }} : sélection bloquée"
+              message: Un appareil est désactivé, inconnu ou mal configuré. Aucune commande envoyée.
+          - stop: Sélection invalide
+  - choose:
+      - conditions: "{{ test_mode }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "TEST - {{ notification_label }}"
+              message: >-
+                Appareils prévus : {{ requested_devices | join(', ') }}.
+                Attente Frech : {{ wait_time }} s. Pause entre appareils : {{ interval_seconds }} s.
+                Aucun relais ni script commandé.
+          - stop: Simulation terminée
+  - variables:
+      devices_available: >-
+        {%- set ns = namespace(available=true) -%}
+        {%- for device in requested_devices -%}
+          {%- set m = machine_catalog[device] -%}
+          {%- if (m.type != 'script' and states(m.switch_entity) not in ['on','off'])
+                or (m.type != 'switch' and states(m.script_entity) != 'off')
+                or (m.type == 'frech' and states(m.input_entity) not in ['on','off']) -%}
+            {%- set ns.available = false -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {{- ns.available -}}
+  - choose:
+      - conditions: "{{ not devices_available }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "{{ notification_label }} : appareil indisponible"
+              message: Un relais ou retour est indisponible, ou un script est occupé. Aucune commande envoyée.
+          - stop: Appareil indisponible
+  - repeat:
+      for_each: "{{ requested_devices }}"
+      sequence:
+        - variables:
+            machine: "{{ machine_catalog[repeat.item] }}"
+        - action: calendar.get_events
+          target:
+            entity_id: !input planning_calendar
+          data:
+            start_date_time: "{{ trigger.calendar_event.start }}"
+            end_date_time: "{{ (now() + timedelta(seconds=1)).isoformat() }}"
+          response_variable: current_response
+        - variables:
+            continue_start: >-
+              {%- set ns = namespace(present=false, closed=false) -%}
+              {%- if current_response is mapping and planning_calendar in current_response
+                    and current_response[planning_calendar] is mapping
+                    and current_response[planning_calendar].get('events') is sequence
+                    and current_response[planning_calendar].get('events') is not string
+                    and current_response[planning_calendar].get('events') is not mapping -%}
+                {%- for item in current_response[planning_calendar]['events'] -%}
+                  {%- set meta = item.description | default('', true) | from_json({}) -%}
+                  {%- if meta == event_meta and as_timestamp(item.start, 0) == event_ts | float -%}
+                    {%- set ns.present = true -%}
+                  {%- endif -%}
+                  {%- if meta is mapping and meta.get('planning_chauffe') == 1 and meta.get('kind') == 'closure'
+                        and (as_timestamp(item.start, 0) <= 0
+                          or as_timestamp(item.end, 0) <= as_timestamp(item.start, 0)
+                          or as_timestamp(item.start, 0) <= as_timestamp(now()) < as_timestamp(item.end, 0)
+                          or as_timestamp(item.start, 0) <= event_ts | float < as_timestamp(item.end, 0)) -%}
+                    {%- set ns.closed = true -%}
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- endif -%}
+              {{- ns.present and not ns.closed and machine.get('enabled', true) is true
+                  and states(planning_calendar) in ['on','off']
+                  and (machine.type == 'script' or states(machine.switch_entity) in ['on','off'])
+                  and (machine.type == 'switch' or states(machine.script_entity) == 'off')
+                  and (machine.type != 'frech' or states(machine.input_entity) in ['on','off']) -}}
+        - choose:
+            - conditions: "{{ not continue_start }}"
+              sequence:
+                - action: persistent_notification.create
+                  data:
+                    notification_id: "{{ notification_id }}"
+                    title: "{{ notification_label }} : séquence interrompue"
+                    message: Le planning a changé, une exclusion est active ou un appareil est indisponible. Les appareils restants ne seront pas commandés.
+                - stop: Séquence interrompue
+        - choose:
+            - conditions: "{{ machine.type == 'switch' }}"
+              sequence:
+                - action: switch.turn_on
+                  target:
+                    entity_id: "{{ machine.switch_entity }}"
+                - wait_template: "{{ states(machine.switch_entity) == 'on' }}"
+                  timeout: "00:00:20"
+                  continue_on_timeout: true
+                - choose:
+                    - conditions: "{{ not wait.completed }}"
+                      sequence:
+                        - action: persistent_notification.create
+                          data:
+                            notification_id: "{{ notification_id }}"
+                            title: "{{ notification_label }} : retour incomplet"
+                            message: "Le relais {{ machine.switch_entity }} n’a pas confirmé son activation."
+                        - stop: Retour du relais incomplet
+            - conditions: "{{ machine.type == 'script' }}"
+              sequence:
+                - action: "{{ machine.script_entity }}"
+            - conditions: "{{ machine.type == 'frech' }}"
+              sequence:
+                - action: "{{ machine.script_entity }}"
+                  data:
+                    switch_entity: "{{ machine.switch_entity }}"
+                    input_entity: "{{ machine.input_entity }}"
+                    frech_number: "{{ machine.frech_number }}"
+                    wait_time: !input wait_time
+        - if: "{{ not repeat.last }}"
+          then:
+            - delay:
+                seconds: !input interval_seconds
+  - action: persistent_notification.create
+    data:
+      notification_id: "{{ notification_id }}"
+      title: "{{ notification_label }} : séquence terminée"
+      message: >-
+        Les actions prévues pour {{ requested_devices | join(', ') }} sont terminées.
+        Pour les Frech, consulter aussi les notifications du script de démarrage.

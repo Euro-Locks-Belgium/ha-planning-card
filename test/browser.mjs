@@ -57,7 +57,7 @@ try {
   assert.deepEqual(await page.evaluate(() => editorConfig.groups), [{ name: '', calendar: '' }]);
   await editor.getByRole('button', { name: 'Retirer ce groupe', exact: true }).click();
   assert.deepEqual(await page.evaluate(() => editorConfig.groups), []);
-  await editor.locator('details').first().evaluate(e => { e.open = true; });
+  await editor.locator('details').filter({hasText:'Appareils programmables'}).evaluate(e => { e.open = true; });
   await editor.getByRole('button', {name:'Ajouter un appareil',exact:true}).click();
   assert.equal(await editor.locator('[data-device="0"][data-field="id"]').inputValue(), '');
   await editor.locator('[data-device="0"][data-field="name"]').fill('Machine A');
