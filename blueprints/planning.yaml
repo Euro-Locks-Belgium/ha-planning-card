@@ -1,0 +1,221 @@
+blueprint:
+  name: Planning - calendrier unique
+  description: >-
+    Exécute les événements créés par la carte Planning. Une exclusion
+    bloque tous les démarrages. Une reprise peut remplacer l'horaire hebdomadaire
+    du cycle dimanche-samedi. Le mode test est activé par défaut : il génère une
+    notification sans commander de relais. Un seul calendrier est nécessaire.
+    Sans groupes, laisser le filtre de groupe vide. Les groupes sont facultatifs.
+    La fin d'un événement n'éteint aucun relais. Aucun rattrapage après arrêt de HA.
+  domain: automation
+  author: Euro-Locks Belgium
+  source_url: https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/main/blueprints/planning.yaml
+  homeassistant:
+    min_version: "2026.10.0"
+  input:
+    group_filter:
+      name: Filtre de groupe (facultatif)
+      description: Laisser vide si aucun groupe n'est défini dans la carte. Sinon saisir exactement le nom du groupe.
+      default: ""
+      selector:
+        text: {}
+    group_name:
+      name: Libellé des notifications (facultatif)
+      description: Laisser vide pour utiliser le nom du calendrier.
+      default: ""
+      selector:
+        text: {}
+    planning_calendar:
+      name: Calendrier du planning
+      selector:
+        entity:
+          filter:
+            domain: calendar
+    target_switches:
+      name: Appareils à activer
+      description: Peut rester vide en mode test. Sélectionner uniquement les relais de ce groupe.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            domain: switch
+    test_mode:
+      name: Mode test (notifications uniquement)
+      default: true
+      selector:
+        boolean: {}
+
+mode: queued
+max: 10
+max_exceeded: warning
+
+variables:
+  group_filter: !input group_filter
+  group_name: !input group_name
+  planning_calendar: !input planning_calendar
+  notification_label: "{{ group_name or state_attr(planning_calendar, 'friendly_name') or planning_calendar }}"
+  selected_switches: !input target_switches
+  test_mode: !input test_mode
+
+triggers:
+  - trigger: calendar
+    event: start
+    entity_id: !input planning_calendar
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger is defined and trigger.platform == 'calendar'
+         and states(planning_calendar) in ['on', 'off'] }}
+
+actions:
+  - variables:
+      event_meta: "{{ trigger.calendar_event.description | default('', true) | from_json({}) }}"
+      event_ts: "{{ as_timestamp(trigger.calendar_event.start, 0) }}"
+      notification_id: "{{ 'planning_' ~ (planning_calendar | replace('.', '_')) ~ '_' ~ group_filter }}"
+      cycle_start: >-
+        {% set local_start = as_local(as_datetime(trigger.calendar_event.start)) %}
+        {{- local_start.replace(hour=0, minute=0, second=0, microsecond=0)
+           - timedelta(days=(local_start.weekday() + 1) % 7) -}}
+  - condition: template
+    value_template: >-
+      {{ event_meta is mapping and event_meta.get('planning_chauffe') == 1
+         and event_meta.get('kind') in ['weekly', 'restart']
+         and event_meta.get('group', '') == group_filter
+         and 0 <= as_timestamp(now()) - (event_ts | float) < 90 }}
+  - action: calendar.get_events
+    target:
+      entity_id: !input planning_calendar
+    data:
+      start_date_time: "{{ trigger.calendar_event.start }}"
+      end_date_time: "{{ (as_datetime(trigger.calendar_event.start) + timedelta(seconds=1)).isoformat() }}"
+    response_variable: closure_response
+  - condition: template
+    value_template: >-
+      {{ closure_response is mapping and planning_calendar in closure_response
+         and closure_response[planning_calendar] is mapping
+         and closure_response[planning_calendar].get('events') is sequence
+         and closure_response[planning_calendar].get('events') is not string
+         and closure_response[planning_calendar].get('events') is not mapping }}
+  - variables:
+      closure_active: >-
+        {%- set ns = namespace(active=false) -%}
+        {%- for item in closure_response[planning_calendar]['events'] -%}
+          {%- set meta = item.description | default('', true) | from_json({}) -%}
+          {%- if meta is mapping and meta.get('planning_chauffe') == 1
+                and meta.get('kind') == 'closure'
+                and (as_timestamp(item.start, 0) <= 0
+                     or as_timestamp(item.end, 0) <= as_timestamp(item.start, 0)
+                     or as_timestamp(item.start, 0) <= (event_ts | float) < as_timestamp(item.end, 0)) -%}
+            {%- set ns.active = true -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {{- ns.active -}}
+  - choose:
+      - conditions: "{{ closure_active }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "{{ notification_label }} : démarrage bloqué"
+              message: Une exclusion est active à l'heure prévue. Aucun relais n'a été commandé.
+          - stop: Exclusion active
+  - action: calendar.get_events
+    target:
+      entity_id: !input planning_calendar
+    data:
+      start_date_time: "{{ cycle_start }}"
+      end_date_time: "{{ (as_datetime(cycle_start) + timedelta(days=7)).isoformat() }}"
+    response_variable: group_response
+  - condition: template
+    value_template: >-
+      {{ group_response is mapping and planning_calendar in group_response
+         and group_response[planning_calendar] is mapping
+         and group_response[planning_calendar].get('events') is sequence
+         and group_response[planning_calendar].get('events') is not string
+         and group_response[planning_calendar].get('events') is not mapping }}
+  - variables:
+      event_still_present: >-
+        {%- set ns = namespace(found=false) -%}
+        {%- for item in group_response[planning_calendar]['events'] -%}
+          {%- set meta = item.description | default('', true) | from_json({}) -%}
+          {%- if meta is mapping and meta == event_meta
+                and as_timestamp(item.start, 0) == (event_ts | float) -%}
+            {%- set ns.found = true -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {{- ns.found -}}
+  - condition: template
+    value_template: "{{ event_still_present }}"
+  - variables:
+      weekly_replaced: >-
+        {%- set ns = namespace(replaced=false) -%}
+        {%- if event_meta.get('kind') == 'weekly' -%}
+          {%- for item in group_response[planning_calendar]['events'] -%}
+            {%- set meta = item.description | default('', true) | from_json({}) -%}
+            {%- if meta is mapping and meta.get('planning_chauffe') == 1
+                  and meta.get('kind') == 'restart'
+                  and meta.get('group', '') == event_meta.get('group', '')
+                  and (meta.get('replace') == true
+                       or as_timestamp(item.start, 0) == (event_ts | float))
+                  and as_timestamp(cycle_start) <= as_timestamp(item.start, 0)
+                    < as_timestamp(as_datetime(cycle_start) + timedelta(days=7)) -%}
+              {%- set ns.replaced = true -%}
+            {%- endif -%}
+          {%- endfor -%}
+        {%- endif -%}
+        {{- ns.replaced -}}
+  - choose:
+      - conditions: "{{ weekly_replaced }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "{{ notification_label }} : horaire remplacé"
+              message: Une reprise ponctuelle remplace ce démarrage habituel pour le cycle. Aucun relais n'a été commandé.
+          - stop: Horaire remplacé
+  - choose:
+      - conditions: "{{ test_mode }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "TEST - {{ notification_label }}"
+              message: >-
+                Démarrage autorisé par le planning à {{ trigger.calendar_event.start }}.
+                Mode test : aucun relais commandé. {{ selected_switches | count }} relais sélectionné(s).
+          - stop: Simulation terminée
+  - condition: template
+    value_template: "{{ selected_switches | count > 0 }}"
+  - variables:
+      unavailable_relays: "{{ selected_switches | reject('has_value') | list }}"
+  - choose:
+      - conditions: "{{ unavailable_relays | count > 0 }}"
+        sequence:
+          - action: persistent_notification.create
+            data:
+              notification_id: "{{ notification_id }}"
+              title: "{{ notification_label }} : relais indisponible"
+              message: >-
+                Démarrage annulé pour ce groupe. Relais indisponibles :
+                {{ unavailable_relays | join(', ') }}.
+          - stop: Relais indisponible
+  - condition: template
+    value_template: >-
+      {{ states(planning_calendar) in ['on', 'off']
+         and 0 <= as_timestamp(now()) - (event_ts | float) < 90 }}
+  - action: switch.turn_on
+    target:
+      entity_id: !input target_switches
+  - wait_template: "{{ selected_switches | select('is_state', 'on') | list | count == selected_switches | count }}"
+    timeout: "00:00:20"
+    continue_on_timeout: true
+  - action: persistent_notification.create
+    data:
+      notification_id: "{{ notification_id }}"
+      title: "{{ notification_label }} : {{ 'relais activés' if wait.completed else 'retour incomplet' }}"
+      message: >-
+        {{ 'Tous les relais sélectionnés indiquent on.' if wait.completed
+           else 'La commande a été envoyée mais tous les relais ne confirment pas on. Vérifiez le groupe.' }}
+        Ce retour confirme uniquement l’état des appareils sélectionnés.

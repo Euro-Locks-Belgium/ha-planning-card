@@ -22,22 +22,28 @@ class PlanningChauffeEditor extends HTMLElement {
     const value = el.type === 'checkbox' ? el.checked : el.value;
     if (el.dataset.group !== undefined) this._config.groups[Number(el.dataset.group)][el.dataset.field] = value;
     else this._config[el.dataset.field] = value;
+    if (el.dataset.field === 'calendar' && el.dataset.group === undefined && value) this._config.demo = false;
     this._emit();
-    if (el.dataset.field === 'demo') this._render();
+    if (el.dataset.field === 'demo' || el.dataset.field === 'calendar') this._render();
   }
   _render() {
     if (!this._config || !this._hass) return;
     this._rendered = true;
     const calendars = Object.values(this._hass.states || {}).filter(s => s.entity_id.startsWith('calendar.'));
+    const legacy = !this._config.calendar && !!this._config.closure_calendar;
     const select = (label, field, value, index) => `<label>${label}<select data-field="${field}" ${index === undefined ? '' : `data-group="${index}"`}><option value="">Choisir un calendrier</option>${calendars.map(s => `<option value="${esc(s.entity_id)}" ${value === s.entity_id ? 'selected' : ''}>${esc(s.attributes.friendly_name || s.entity_id)} (${esc(s.entity_id)})</option>`).join('')}</select></label>`;
     this.shadowRoot.innerHTML = `<style>:host{display:block;color:var(--primary-text-color)}label{display:flex;flex-direction:column;gap:6px;margin:12px 0;font:inherit}input,select,button{font:inherit;padding:10px;box-sizing:border-box;color:var(--primary-text-color);background:var(--secondary-background-color);border:1px solid var(--divider-color);border-radius:6px}input,select{width:100%}.check{flex-direction:row;align-items:center}.check input{width:auto}p{color:var(--secondary-text-color);font-size:13px}fieldset{border:1px solid var(--divider-color);border-radius:8px;margin:15px 0;padding:12px}legend{padding:0 5px}button{min-height:40px}button:disabled{opacity:.5}</style>
       <label>Titre<input data-field="title" value="${esc(this._config.title || 'Planning')}"></label>
+      ${select('Calendrier du planning', 'calendar', this._config.calendar)}
+      <p>Un seul calendrier contient les programmations et les exclusions. Aucun groupe n’est nécessaire pour commencer.</p>
       <label class="check"><input type="checkbox" data-field="demo" ${this._config.demo ? 'checked' : ''}>Mode local (sans enregistrement Home Assistant)</label>
-      <p>Aucun groupe, horaire ou événement n’est ajouté automatiquement.</p>
-      ${!this._config.demo ? `<p>Choisissez des calendriers locaux dédiés. Les actions sont exécutées par les automatisations associées.</p>${select('Calendrier des exclusions', 'closure_calendar', this._config.closure_calendar)}` : ''}
-      ${this._config.groups.map((g, i) => `<fieldset><legend>Groupe ${i + 1}</legend><label>Nom<input data-field="name" data-group="${i}" value="${esc(g.name)}"></label>${!this._config.demo ? select('Calendrier', 'calendar', g.calendar, i) : ''}<button type="button" data-remove="${i}">Retirer ce groupe</button></fieldset>`).join('')}
+      <p>Choisir un calendrier active le mode connecté. Le mode local permet de tester sans enregistrer d’événement.</p>
+      <details ${this._config.groups.length ? 'open' : ''}><summary>Groupes (facultatif)</summary>
+      <p>Uniquement pour distinguer plusieurs ensembles d’appareils dans le même calendrier. Utiliser le même nom dans le filtre de groupe du blueprint.</p>
+      ${legacy ? select('Ancien calendrier des exclusions', 'closure_calendar', this._config.closure_calendar) : ''}
+      ${this._config.groups.map((g, i) => `<fieldset><legend>Groupe ${i + 1}</legend><label>Nom<input data-field="name" data-group="${i}" value="${esc(g.name)}"></label>${legacy && !this._config.demo ? select('Ancien calendrier du groupe', 'calendar', g.calendar, i) : ''}<button type="button" data-remove="${i}">Retirer ce groupe</button></fieldset>`).join('')}
       <button type="button" data-action="add-group" ${this._config.groups.length >= 8 ? 'disabled' : ''}>Ajouter un groupe</button>
-      <p>Retirer un groupe de la carte ne supprime pas son calendrier.</p>
+      <p>Renommer un groupe nécessite de mettre à jour son filtre dans le blueprint. Retirer un groupe de la carte ne supprime aucun événement.</p></details>
       <p>Taille : dans une vue Sections, utiliser l’onglet Disposition de la carte. Une vue Panneau permet une page pleine largeur.</p>`;
   }
 }

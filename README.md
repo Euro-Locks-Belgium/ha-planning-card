@@ -13,7 +13,7 @@ date ou heure préremplie. Le mode local ne crée rien dans Home Assistant.
 
 1. Dans **HACS → ⋮ → Dépôts personnalisés**, ajouter
    `https://github.com/Euro-Locks-Belgium/ha-planning-card`, type **Dashboard**.
-2. Télécharger ou mettre à jour **Planning** vers **v0.2.1**.
+2. Télécharger ou mettre à jour **Planning** vers **v0.3.0**.
 3. Recharger complètement le navigateur ou l'application Home Assistant.
 4. Ajouter la carte **Planning**, ou une carte manuelle :
 
@@ -33,7 +33,7 @@ Si votre carte a un titre personnalisé, vous pouvez le modifier dans son édite
 
 ### Migration depuis la version 0.2.0 ou précédente
 
-- Utiliser la nouvelle adresse du dépôt dans HACS, puis télécharger **v0.2.1**.
+- Utiliser la nouvelle adresse du dépôt dans HACS, puis télécharger **v0.3.0**.
 - GitHub redirige l'ancienne adresse et conserve l'historique du dépôt.
 - Vérifier la ressource JavaScript ci-dessous : si HA référence toujours l'ancien
   dossier ou l'ancien fichier, remplacer cette entrée par le nouveau chemin.
@@ -47,28 +47,52 @@ dans **Paramètres → Tableaux de bord → ⋮ → Ressources** :
 /hacsfiles/ha-planning-card/ha-planning-card.js
 ```
 
-## Configurer vos groupes
+## Choisir un seul calendrier
 
-Dans l'éditeur de carte, cliquer sur **Ajouter un groupe**. La ligne ajoutée est
-vide : saisir son nom. On peut ajouter ou retirer jusqu'à 8 groupes depuis cet
-éditeur, sans écrire de YAML. Aucun groupe n'est créé automatiquement.
+1. Modifier la carte.
+2. Dans **Calendrier du planning**, sélectionner votre calendrier local.
+3. Enregistrer. Le choix du calendrier active le mode connecté.
+4. Cliquer sur **Ajouter une programmation** ou **Ajouter une exclusion**.
 
-Pour utiliser des calendriers partagés :
+**Aucun groupe et aucun deuxième calendrier ne sont nécessaires.** Programmations
+et exclusions sont enregistrées dans le même calendrier, avec un type distinct.
+La carte ne crée aucun événement au moment de sa configuration.
 
-1. Créer des **calendriers locaux dédiés** depuis **Paramètres → Appareils et
-   services → Ajouter une intégration → Calendrier local** : un calendrier par
-   groupe, plus un calendrier commun pour les exclusions.
-2. Dans l'éditeur de carte, désactiver **Mode local**.
-3. Choisir le calendrier des exclusions et celui de chaque groupe.
+Configuration minimale connectée :
 
-La carte reste vide et n'effectue aucune requête calendrier tant que cette
-configuration n'est pas complète. Retirer un groupe de la carte ne supprime pas
-son calendrier ou ses événements. Une mise à jour de la carte n'efface aucun
-calendrier existant.
+```yaml
+type: custom:ha-planning-card
+calendar: calendar.mon_planning
+```
 
-Les événements sont enregistrés dans Home Assistant et partagés entre les
-utilisateurs. Aucun jeton n'est à saisir dans la carte. Un utilisateur standard
-doit disposer du droit de contrôle sur les calendriers sélectionnés.
+Le nom du calendrier est utilisé pour l'affichage. Les dates et heures restent
+vierges jusqu'à votre saisie. Les événements sont conservés sur le serveur et
+partagés entre les utilisateurs. La session HA de l'utilisateur est utilisée :
+aucun jeton à saisir. Le calendrier doit permettre de lire, créer, modifier et
+supprimer les événements, avec les droits de contrôle nécessaires pour le compte.
+
+Pour tester sans enregistrer dans HA, cocher **Mode local**, même si un calendrier
+est sélectionné. Les données du mode local sont réinitialisées au rechargement.
+
+### Groupes facultatifs
+
+Ouvrir **Groupes (facultatif)** seulement pour distinguer plusieurs ensembles
+d'appareils dans le même calendrier. Ajouter un nom par groupe. Chaque groupe
+peut avoir son horaire hebdomadaire et ses programmations ponctuelles.
+
+Tous les groupes utilisent le même calendrier ; les exclusions s'appliquent à
+tous. Le nom d'un groupe sert à son association au blueprint : recopier exactement
+ce nom dans **Filtre de groupe**. Renommer un groupe demande de mettre à jour le
+filtre et les événements concernés. Un groupe inconnu n'est pas exécuté par une
+automatisation d'un autre groupe.
+
+### Anciennes configurations
+
+Les anciennes configurations avec un calendrier par groupe et un calendrier
+séparé d'exclusions restent prises en charge. Aucun événement n'est déplacé ou
+supprimé automatiquement. Pour passer au mode simple, sélectionner le calendrier
+du planning ; retirer les groupes facultatifs si vous n'en avez pas besoin.
+Les événements conservés dans les autres calendriers restent dans ces calendriers.
 
 ## Agrandir ou redimensionner la carte
 
@@ -128,7 +152,8 @@ si la carte est imbriquée dans une pile ou une carte grille.
 
 ## Programmations et exclusions
 
-- **Programmation ponctuelle** : choisir un groupe, une date et une heure.
+- **Programmation ponctuelle** : choisir une date et une heure. Le groupe ne
+  s’affiche que si des groupes facultatifs ont été configurés.
 - **Horaire habituel** : une série hebdomadaire par groupe, avec choix du jour et
   de l'heure. Modifier ou supprimer cette série affecte toute la série.
 - **Remplacement facultatif** : cocher la case pour remplacer l'horaire habituel
@@ -155,12 +180,19 @@ n'exécute aucune commande.
 1. Ouvrir **Paramètres → Automatisations et scènes → Blueprints → Importer**.
 2. Importer :
 
-   `https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/v0.2.1/blueprints/planning-chauffe.yaml`
+   `https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/v0.3.0/blueprints/planning.yaml`
 
-3. Créer une automatisation par groupe. Renseigner son nom et ses calendriers.
+3. Choisir **le même calendrier** que dans la carte. Laisser **Filtre de groupe**
+   vide si aucun groupe facultatif n’est configuré. Si vous utilisez des groupes,
+   créer une automatisation par groupe et saisir son nom exact dans ce filtre.
 4. Conserver **Mode test = activé**. La sélection d'appareils peut rester vide.
 5. Programmer un événement à plus de 20 minutes, hors exclusion.
 6. Vérifier la notification **TEST** et la trace de l'automatisation à l'heure prévue.
+
+Le nouveau blueprint est **Planning - calendrier unique**. L’ancien fichier
+`planning-chauffe.yaml` reste réservé aux installations à calendriers séparés.
+Importer `planning.yaml` pour le mode à calendrier unique ; changer le calendrier
+dans l’ancien blueprint ne suffit pas.
 
 Le blueprint fonctionne sur le serveur même si le tableau de bord est fermé. Il
 relit le calendrier avant toute commande : un événement annulé ou modifié ne doit
@@ -183,14 +215,16 @@ planning, pour éviter qu'ils contournent les exclusions.
 - Home Assistant **2026.10.0 minimum** ; capacités de l'installation cible
   vérifiées en lecture seule sur 2026.10.4.
 - Calendriers locaux permettant création, modification et suppression.
-- De 0 à 8 groupes ; configuration initiale vide.
+- Un calendrier suffit ; de 0 à 8 groupes facultatifs. Configuration initiale vide.
 - Un horaire hebdomadaire par groupe ; pas de modification d'une seule occurrence
   depuis la carte. Utiliser une programmation ponctuelle avec remplacement.
 - Relecture avant modification pour détecter un changement concurrent ; il ne
   s'agit pas d'un verrou transactionnel entre clients.
 - Les événements sans les métadonnées de la carte sont affichés « non piloté » et
-  ignorés par le blueprint. Tout événement du calendrier des exclusions bloque
-  cependant les activations, même s'il a été créé ailleurs.
+  ignorés par le nouveau blueprint. Dans le calendrier unique, seules les exclusions
+  créées avec **Ajouter une exclusion** bloquent les activations. Ne pas retirer
+  leurs métadonnées depuis un autre éditeur. Dans l’ancien mode séparé, tout
+  événement du calendrier dédié aux exclusions continue à bloquer.
 - Aucun test sur des appareils réels ni modification de l'installation Home
   Assistant n'est effectué lors de la publication GitHub.
 

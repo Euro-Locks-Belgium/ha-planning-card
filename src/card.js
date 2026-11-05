@@ -33,6 +33,7 @@ class PlanningChauffeCard extends HTMLElement {
   _q(selector) { return this.shadowRoot.querySelector(selector); }
   _initialize() {
     this._zone = this._hass.config?.time_zone || 'Europe/Brussels';
+    this._runtimeGroups = resolveGroups(this._config, this._hass.states?.[this._config.calendar]?.attributes?.friendly_name);
     this._selected = dayOf(Date.now(), this._zone); this._month = this._selected.slice(0, 7);
     this._initialized = true; this._events = []; this._editor = null;
     if (this._config.demo) {
@@ -40,9 +41,11 @@ class PlanningChauffeCard extends HTMLElement {
       this._events = demo.events; this._selected = demo.selected; this._loaded = true; this._render();
     } else { this._render(); this._load(); }
   }
-  _calendar(index) { return this._config.demo ? `calendar.demo_group_${index}` : this._config.groups[index].calendar; }
-  _closureCalendar() { return this._config.demo ? 'calendar.demo_closures' : this._config.closure_calendar; }
-  _name(event) { return event.role === 'closure' ? event.summary : this._config.groups[event.groupIndex]?.name || event.summary; }
+  _groups() { return this._runtimeGroups || []; }
+  _implicitGroup() { return !!this._config.calendar && this._groups().length === 1 && this._groups()[0].id === ''; }
+  _calendar(index) { return this._config.calendar || (this._config.demo ? `calendar.demo_group_${index}` : this._groups()[index].calendar); }
+  _closureCalendar() { return this._config.calendar || (this._config.demo ? 'calendar.demo_closures' : this._config.closure_calendar); }
+  _name(event) { return event.role === 'closure' ? event.summary : this._groups()[event.groupIndex]?.name || event.summary; }
   _date(instant, options = {}) { return new Intl.DateTimeFormat('fr-BE', { timeZone: this._zone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', ...options }).format(new Date(instant)); }
   _dayLabel(day) { return new Intl.DateTimeFormat('fr-BE', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${day}T12:00:00Z`)); }
   _status(event) { return eventStatus(event, this._events, this._zone); }
@@ -50,11 +53,11 @@ class PlanningChauffeCard extends HTMLElement {
     return ({ closure: 'Exclusion', external: 'Événement non piloté', closed: 'Bloqué par exclusion', replaced: 'Remplacé pour ce cycle' })[this._status(event)] || (event.meta?.kind === 'restart' ? 'Programmation ponctuelle' : 'Horaire habituel');
   }
   _editable(event) { return !!event.uid && !!event.meta && (!event.rrule || event.meta.kind === 'weekly'); }
-  _hasGroups() { return this._config.groups.some(g => g.name.trim()); }
-  _needsSetup() { return !this._config.demo && (!this._config.closure_calendar || !this._config.groups.length || this._config.groups.some(g => !g.calendar || !g.name.trim())); }
+  _hasGroups() { return this._groups().some(g => g.name.trim()); }
+  _needsSetup() { return !this._config.demo && !this._config.calendar && (!this._config.closure_calendar || !this._groups().length || this._groups().some(g => !g.calendar || !g.name.trim())); }
   _canWrite() { return this._config.demo || (this._loaded && !this._error && !this._loading); }
   async _fetch(startDay, endDay) {
-    const sources = [{ calendar: this._closureCalendar(), role: 'closure', index: null }, ...this._config.groups.map((g, i) => ({ calendar: this._calendar(i), role: 'group', index: i }))];
+    const sources = this._config.calendar ? [{ calendar: this._config.calendar, role: 'shared', index: null }] : [{ calendar: this._closureCalendar(), role: 'closure', index: null }, ...this._groups().map((g, i) => ({ calendar: this._calendar(i), role: 'group', index: i }))];
     const query = new URLSearchParams({ start: toInstant(`${startDay}T00:00`, this._zone), end: toInstant(`${endDay}T00:00`, this._zone) });
     const results = await Promise.all(sources.map(async source => {
       const entity = this._hass.states[source.calendar];
@@ -62,7 +65,7 @@ class PlanningChauffeCard extends HTMLElement {
       if ((Number(entity.attributes.supported_features) & 7) !== 7) throw new Error(`Le calendrier ${source.calendar} ne permet pas toutes les modifications. Utilisez Calendrier local.`);
       const rows = await this._hass.callApi('GET', `calendars/${source.calendar}?${query}`);
       if (!Array.isArray(rows)) throw new Error('Réponse calendrier invalide.');
-      return rows.map(e => normalizeEvent(e, source.calendar, source.role, source.index, this._zone));
+      return rows.map(e => normalizeEvent(e, source.calendar, source.role, source.index, this._zone, this._groups()));
     }));
     return results.flat();
   }
@@ -87,7 +90,7 @@ class PlanningChauffeCard extends HTMLElement {
       <div class="ha-heading"><div><h1>${esc(this._config.title)}</h1><p class="ha-secondary">Programmations ponctuelles, horaires récurrents et exclusions.</p></div><div class="ha-actions">${this._button('Ajouter une exclusion', 'new-closure', true, disabled)}${this._button('Ajouter une programmation', 'new-restart', false, !this._hasGroups() ? 'disabled' : disabled)}</div></div>
       <div class="ha-demo"><ha-icon icon="mdi:${this._config.demo ? 'flask-outline' : 'calendar-check'}"></ha-icon><span>${this._config.demo ? 'Mode local · aucun enregistrement dans Home Assistant' : 'Calendriers Home Assistant · exécution selon les automatisations configurées'}</span></div>
       ${this._error ? `<div class="ha-error ha-top-error" role="alert">${esc(this._error)} Les modifications sont bloquées. ${this._button('Réessayer', 'refresh', true)}</div>` : ''}
-      ${!this._hasGroups() || this._needsSetup() ? '<p class="ha-secondary ha-setup" role="status">Planning vide. Ajoutez vos groupes et choisissez les calendriers dans l’éditeur de carte.</p>' : ''}
+      ${!this._hasGroups() || this._needsSetup() ? '<p class="ha-secondary ha-setup" role="status">Choisissez le calendrier du planning dans l’éditeur de carte. Aucun groupe n’est nécessaire pour commencer.</p>' : ''}
       <div class="ha-tabs" role="tablist" aria-label="Vues du planning"><button type="button" role="tab" id="calendar-tab" aria-controls="calendar-panel" aria-selected="${this._view === 'calendar'}" data-view="calendar">Calendrier</button><button type="button" role="tab" id="weekly-tab" aria-controls="weekly-panel" aria-selected="${this._view === 'weekly'}" data-view="weekly">Horaires habituels</button></div>
       <section id="calendar-panel" role="tabpanel" aria-labelledby="calendar-tab" ${this._view !== 'calendar' ? 'hidden' : ''}><div class="ha-workspace"><section class="ha-calendar" aria-label="Calendrier">${this._calendarHtml()}</section><aside class="ha-sidebar">${this._editor ? this._editorHtml() : this._detailsHtml()}${this._closuresHtml()}<div class="ha-rule"><ha-icon icon="mdi:shield-check-outline"></ha-icon><span>Une exclusion bloque les activations pendant la période choisie.</span></div></aside></div></section>
       <section id="weekly-panel" role="tabpanel" aria-labelledby="weekly-tab" ${this._view !== 'weekly' ? 'hidden' : ''}>${this._weeklyHtml()}</section>
@@ -117,8 +120,8 @@ class PlanningChauffeCard extends HTMLElement {
     return `<section class="ha-panel"><div class="ha-panel-title"><h3>Périodes d’exclusion</h3></div>${!closures.length ? '<p class="ha-empty">Aucune exclusion sur la période affichée.</p>' : ''}${closures.map(e => `<article class="ha-closure-item"><h3>${esc(e.summary)}</h3><p>Du ${esc(this._date(e.start))}<br>au ${esc(this._date(e.end))}</p><span class="ha-badge cancelled">Démarrages bloqués</span>${this._editable(e) ? `<div class="ha-rowactions"><button type="button" class="ha-textbutton" data-edit="${esc(e.key)}" ${!this._canWrite() ? 'disabled' : ''}>Modifier</button><button type="button" class="ha-textbutton danger" data-delete="${esc(e.key)}" ${!this._canWrite() ? 'disabled' : ''}>Supprimer</button></div>` : '<p>Géré depuis le calendrier Home Assistant.</p>'}</article>`).join('')}</section>`;
   }
   _weeklyHtml() {
-    if (!this._hasGroups()) return '<h2>Horaires habituels</h2><p class="ha-empty">Aucun groupe configuré. Ajoutez vos groupes dans l’éditeur de carte.</p>';
-    return `<div class="ha-weekly-head"><h2>Semaine habituelle</h2><p class="ha-secondary">Cycle hebdomadaire du dimanche au samedi. Une reprise peut remplacer l’horaire de ce cycle.</p></div>${this._config.groups.map((g, i) => {
+    if (!this._hasGroups()) return '<h2>Horaires habituels</h2><p class="ha-empty">Choisissez un calendrier dans l’éditeur de carte pour ajouter un horaire.</p>';
+    return `<div class="ha-weekly-head"><h2>Semaine habituelle</h2><p class="ha-secondary">Cycle hebdomadaire du dimanche au samedi. Une reprise peut remplacer l’horaire de ce cycle.</p></div>${this._groups().map((g, i) => {
       const found = this._events.find(e => e.groupIndex === i && e.meta?.kind === 'weekly');
       return `<article class="ha-weeklyrow"><div><h3>${esc(g.name || 'Groupe sans nom')}</h3><p class="ha-secondary">${found ? esc(new Intl.DateTimeFormat('fr-BE', { timeZone: this._zone, weekday: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(found.start))) : 'Aucun horaire sur la période affichée.'}</p></div><div class="ha-actions">${found ? `<button type="button" class="ha-button" data-edit="${esc(found.key)}" ${!this._canWrite() ? 'disabled' : ''}>Modifier la série</button><button type="button" class="ha-textbutton danger" data-delete="${esc(found.key)}" ${!this._canWrite() ? 'disabled' : ''}>Supprimer</button>` : `<button type="button" class="ha-button" data-weekly="${i}" ${!this._canWrite() || !g.name.trim() ? 'disabled' : ''}>Ajouter un horaire</button>`}</div></article>`;
     }).join('')}`;
@@ -134,7 +137,8 @@ class PlanningChauffeCard extends HTMLElement {
       html += '<form><div class="ha-settings">';
       if (d.kind === 'closure') html += `<div class="ha-wide">${this._field('Libellé', 'summary', 'text', d.summary)}${this._field('Début de la période', 'start', 'datetime-local', d.start ? localMinute(d.start, this._zone) : '')}${this._field('Fin de la période', 'end', 'datetime-local', d.end ? localMinute(d.end, this._zone) : '')}</div>`;
       else {
-        html += `<label class="ha-field ha-wide">Groupe<select name="group" required ${editing ? 'disabled' : ''}><option value="">Choisir un groupe</option>${this._config.groups.map((g, i) => `<option value="${i}" ${i === d.groupIndex ? 'selected' : ''} ${!g.name.trim() ? 'disabled' : ''}>${esc(g.name)}</option>`).join('')}</select></label>`;
+        if (this._implicitGroup()) html += `<p class="ha-secondary ha-wide">Calendrier : ${esc(this._groups()[0].name)}</p>`;
+        else html += `<label class="ha-field ha-wide">Groupe<select name="group" required ${editing ? 'disabled' : ''}><option value="">Choisir un groupe</option>${this._groups().map((g, i) => `<option value="${i}" ${i === d.groupIndex ? 'selected' : ''} ${!g.name.trim() ? 'disabled' : ''}>${esc(g.name)}</option>`).join('')}</select></label>`;
         if (d.kind === 'weekly') html += `<label class="ha-field">Jour<select name="day" required><option value="">Choisir un jour</option>${['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'].map((name, i) => `<option value="${i}" ${d.start && i === weekday(dayOf(d.start, this._zone)) ? 'selected' : ''}>${name}</option>`).join('')}</select></label>`;
         else html += this._field('Date', 'date', 'date', d.start ? dayOf(d.start, this._zone) : '');
         html += this._field('Heure', 'time', 'time', d.start ? localMinute(d.start, this._zone).slice(11) : '');
@@ -148,6 +152,7 @@ class PlanningChauffeCard extends HTMLElement {
     if (!this._canWrite() || this._busy) return;
     if (kind !== 'closure' && !this._hasGroups()) return;
     this._view = 'calendar'; this._message = ''; this._formError = ''; this._original = event || null;
+    if (!event && kind !== 'closure' && this._implicitGroup()) index = 0;
     this._draft = event ? { ...event, kind: event.meta.kind, note: event.meta.note || '', replace: event.meta.replace === true, event_id: event.meta.id } : { kind, groupIndex: index, calendar: kind === 'closure' ? this._closureCalendar() : index === null ? '' : this._calendar(index), start: '', end: '', summary: '', replace: false, event_id: newEventId() };
     this._editor = 'form'; this._render();
     this._q('.ha-editor input:not([disabled]),.ha-editor select:not([disabled])')?.focus({ preventScroll: true });
@@ -159,11 +164,12 @@ class PlanningChauffeCard extends HTMLElement {
     try {
       if (d.kind === 'closure') { d.summary = data.get('summary').trim(); d.start = toInstant(data.get('start'), this._zone); d.end = toInstant(data.get('end'), this._zone); }
       else {
-        if (!d.uid) d.groupIndex = Number(data.get('group'));
+        if (!d.uid) d.groupIndex = this._implicitGroup() ? 0 : Number(data.get('group'));
         d.calendar = this._calendar(d.groupIndex);
+        d.group = this._config.calendar ? this._groups()[d.groupIndex].id : undefined;
         d.start = d.kind === 'weekly' ? nextWeekly(Number(data.get('day')), data.get('time'), this._zone) : toInstant(`${data.get('date')}T${data.get('time')}`, this._zone);
         d.end = new Date(Date.parse(d.start) + 300000).toISOString();
-        d.summary = `${d.kind === 'weekly' ? 'Horaire habituel' : 'Programmation'} · ${this._config.groups[d.groupIndex].name}`;
+        d.summary = `${d.kind === 'weekly' ? 'Horaire habituel' : 'Programmation'} · ${this._groups()[d.groupIndex].name}`;
         if (d.kind === 'weekly') d.rrule = `FREQ=WEEKLY;BYDAY=${['SU','MO','TU','WE','TH','FR','SA'][Number(data.get('day'))]}`;
         d.replace = data.get('replace') === 'on';
       }

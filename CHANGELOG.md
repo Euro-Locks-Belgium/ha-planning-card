@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0 — 2026-11-05
+
+- Un seul calendrier pour les programmations et les exclusions.
+- Choix du calendrier suffisant pour commencer ; groupes facultatifs.
+- Nouveau blueprint `planning.yaml` avec filtre de groupe facultatif et mode test par défaut.
+- Isolation des remplacements et doublons par groupe dans un calendrier partagé.
+- Ancien mode multi-calendriers et blueprint historique conservés.
+- Tests du parcours à un calendrier sans groupes et du blocage des exclusions typées.
+
 ## 0.2.1 — 2026-11-05
 
 - Dépôt GitHub renommé en `ha-planning-card`.

@@ -59,10 +59,18 @@ export function metadata(description) {
     return value && !Array.isArray(value) && value.planning_chauffe === META_VERSION && ['weekly', 'restart', 'closure'].includes(value.kind) ? value : null;
   } catch { return null; }
 }
-export function normalizeEvent(raw, calendar, role, groupIndex, zone) {
+export function normalizeEvent(raw, calendar, role, groupIndex, zone, groups = []) {
   let meta = metadata(raw.description);
+  if (role === 'shared') {
+    role = meta?.kind === 'closure' ? 'closure' : 'group';
+    groupIndex = role === 'closure' ? null : groups.findIndex(g => g.id === (meta?.group || ''));
+    if (role === 'group' && groupIndex < 0) meta = null;
+  }
   if ((role === 'closure' && meta?.kind !== 'closure') || (role === 'group' && meta?.kind === 'closure')) meta = null;
   return { ...raw, calendar, role, groupIndex, start: eventTime(raw.start, zone), end: eventTime(raw.end, zone), meta, key: `${calendar}|${raw.uid || raw.summary}|${eventTime(raw.start, zone)}` };
+}
+export function sameGroup(a, b) {
+  return a.calendar === b.calendar && (a.group ?? a.meta?.group ?? '') === (b.group ?? b.meta?.group ?? '');
 }
 export function isClosed(events, at) {
   const t = Date.parse(at);
@@ -74,22 +82,32 @@ export function eventStatus(event, events, zone) {
   if (isClosed(events, event.start)) return 'closed';
   if (event.meta.kind === 'weekly') {
     const cycle = cycleDay(dayOf(event.start, zone));
-    const replaced = events.some(e => e.calendar === event.calendar && e.meta?.kind === 'restart' && (e.meta.replace === true || e.start === event.start) && cycleDay(dayOf(e.start, zone)) === cycle);
+    const replaced = events.some(e => sameGroup(e, event) && e.meta?.kind === 'restart' && (e.meta.replace === true || e.start === event.start) && cycleDay(dayOf(e.start, zone)) === cycle);
     if (replaced) return 'replaced';
   }
   return 'planned';
 }
 export function validateConfig(input) {
-  const config = { title: 'Planning', demo: true, ...input };
+  const config = { title: 'Planning', demo: !input.calendar, calendar: '', ...input };
   if (config.title === 'Planning de chauffe') config.title = 'Planning';
-  config.groups = (input.groups || DEFAULT_GROUPS).map(g => ({ name: g.name || '', calendar: g.calendar || '' }));
+  config.groups = (input.groups || DEFAULT_GROUPS).map(g => ({ name: String(g.name || '').trim(), calendar: g.calendar || '' }));
   if (config.groups.length > 8) throw new Error('Configurez au maximum 8 groupes.');
   if (!config.demo) {
-    const ids = [config.closure_calendar, ...config.groups.map(g => g.calendar)].filter(Boolean);
+    const ids = (config.calendar ? [config.calendar] : [config.closure_calendar, ...config.groups.map(g => g.calendar)]).filter(Boolean);
     if (ids.some(x => typeof x !== 'string' || !/^calendar\.[a-z0-9_]+$/.test(x))) throw new Error('Choisissez des entités de type calendrier.');
     if (new Set(ids).size !== ids.length) throw new Error('Chaque groupe et les fermetures doivent utiliser des calendriers distincts.');
   }
+  if (config.calendar) {
+    const names = config.groups.map(g => g.name.trim()).filter(Boolean);
+    if (new Set(names).size !== names.length) throw new Error('Les groupes doivent avoir des noms distincts.');
+  }
   return config;
+}
+export function resolveGroups(config, calendarLabel = '') {
+  if (!config.calendar) return config.groups.map(g => ({ ...g, id: '' }));
+  const named = config.groups.filter(g => g.name.trim());
+  if (!named.length) return [{ name: calendarLabel || 'Calendrier', calendar: config.calendar, id: '' }];
+  return named.map(g => ({ ...g, calendar: config.calendar, id: g.name }));
 }
 export function validateDraft(draft, events, zone, now = Date.now(), demo = false) {
   const start = Date.parse(draft.start), end = Date.parse(draft.end);
@@ -97,12 +115,12 @@ export function validateDraft(draft, events, zone, now = Date.now(), demo = fals
   if (draft.kind === 'closure') return draft.summary?.trim() ? '' : 'Donnez un libellé à la période d’exclusion.';
   if (!demo && start < now + MIN_LEAD_MINUTES * 60000) return `Programmez le démarrage au moins ${MIN_LEAD_MINUTES} minutes à l’avance.`;
   if (isClosed(events, draft.start) && draft.kind === 'restart') return 'Cette programmation se trouve pendant une exclusion. Modifiez la date ou l’exclusion.';
-  if (events.some(e => e.calendar === draft.calendar && e.uid !== draft.uid && e.meta?.kind === 'restart' && e.start === draft.start && draft.kind === 'restart')) return 'Une programmation existe déjà pour ce groupe à cette heure.';
-  if (draft.kind === 'weekly' && events.some(e => e.calendar === draft.calendar && e.uid !== draft.uid && e.meta?.kind === 'weekly')) return 'Ce groupe possède déjà un horaire habituel. Modifiez cet horaire.';
+  if (events.some(e => sameGroup(e, draft) && e.uid !== draft.uid && e.meta?.kind === 'restart' && e.start === draft.start && draft.kind === 'restart')) return 'Une programmation existe déjà pour ce groupe à cette heure.';
+  if (draft.kind === 'weekly' && events.some(e => sameGroup(e, draft) && e.uid !== draft.uid && e.meta?.kind === 'weekly')) return 'Ce groupe possède déjà un horaire habituel. Modifiez cet horaire.';
   return '';
 }
 export function calendarPayload(draft) {
-  const event = { dtstart: draft.start, dtend: draft.end, summary: draft.summary.trim(), description: JSON.stringify({ planning_chauffe: META_VERSION, kind: draft.kind, id: draft.event_id, replace: draft.kind === 'restart' && draft.replace === true, note: draft.note || '' }) };
+  const event = { dtstart: draft.start, dtend: draft.end, summary: draft.summary.trim(), description: JSON.stringify({ planning_chauffe: META_VERSION, kind: draft.kind, group: draft.kind === 'closure' ? undefined : draft.group, id: draft.event_id, replace: draft.kind === 'restart' && draft.replace === true, note: draft.note || '' }) };
   if (draft.kind === 'weekly') event.rrule = draft.rrule;
   return { type: `calendar/event/${draft.uid ? 'update' : 'create'}`, entity_id: draft.calendar, ...(draft.uid ? { uid: draft.uid } : {}), event };
 }

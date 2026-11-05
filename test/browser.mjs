@@ -15,11 +15,11 @@ const page = await browser.newPage({ viewport: { width: 1100, height: 1200 }, ti
 page.setDefaultTimeout(6000);
 const errors = []; page.on('pageerror', e => errors.push(e.message));
 await page.route('https://planning.test/**', route => route.fulfill({ contentType: 'text/html', body: '<style>body{margin:0;background:#111315;--primary-background-color:#111315;--card-background-color:#1d1f21;--primary-text-color:#e8edf0;--secondary-text-color:#a6b2bb;--divider-color:#363b40;--primary-color:#32c5eb;--text-primary-color:#002c39}</style><ha-planning-card></ha-planning-card>' }));
-async function mount(demo, empty = false) {
+async function mount(demo, empty = false, mode = 'legacy') {
   await page.goto('https://planning.test/');
   await page.addScriptTag({ content: bundle });
   await page.addScriptTag({ content: fixture });
-  await page.evaluate(([d, empty]) => window.setupPlanningTest(d, empty), [demo, empty]);
+  await page.evaluate(([d, empty, mode]) => window.setupPlanningTest(d, empty, mode), [demo, empty, mode]);
   await page.locator('ha-planning-card .ha-day').first().waitFor();
   if (!demo && !empty) await page.waitForFunction(() => window.testPlanning.card._loaded);
 }
@@ -50,16 +50,79 @@ try {
   });
   const editor = page.locator('ha-planning-card-editor');
   assert.equal(await editor.locator('fieldset').count(), 0);
+  await editor.locator('details').evaluate(e => { e.open = true; });
   await editor.getByRole('button', { name: 'Ajouter un groupe', exact: true }).click();
   assert.equal(await editor.locator('[data-field="name"]').inputValue(), '');
   assert.deepEqual(await page.evaluate(() => editorConfig.groups), [{ name: '', calendar: '' }]);
   await editor.getByRole('button', { name: 'Retirer ce groupe', exact: true }).click();
   assert.deepEqual(await page.evaluate(() => editorConfig.groups), []);
+  await editor.locator('select[data-field="calendar"]').first().selectOption('calendar.test_a');
+  assert.equal(await page.evaluate(() => editorConfig.demo), false);
+  assert.equal(await page.evaluate(() => editorConfig.calendar), 'calendar.test_a');
+  assert.equal(await editor.locator('select[data-field="closure_calendar"]').count(), 0);
   await editor.evaluate(e => e.remove());
   // An unconfigured connected card remains empty and performs no API request.
   await mount(false, true);
   assert.equal(await card.locator('.ha-dayevent,.ha-launch,.ha-closure-item').count(), 0);
   assert.equal(await page.evaluate(() => testPlanning.reads.length + testPlanning.ws.length), 0);
+  // One calendar, zero configured groups: the complete create/exclusion flow.
+  await mount(false, false, 'single');
+  assert.equal(await button('Ajouter une programmation').isEnabled(), true);
+  assert.equal(await page.evaluate(() => testPlanning.card._config.groups.length), 0);
+  assert.equal(await page.evaluate(() => testPlanning.reads.length), 1);
+  await button('Ajouter une programmation').click();
+  assert.equal(await card.locator('select[name="group"]').count(), 0);
+  await card.locator('input[name="date"]').fill(day);
+  await card.locator('input[name="time"]').fill('06:00');
+  await button('Vérifier la programmation').click(); await confirm();
+  await page.waitForFunction(() => testPlanning.ws.length === 1 && !testPlanning.card._busy);
+  assert.equal(await page.evaluate(() => testPlanning.ws[0].entity_id), 'calendar.test_a');
+  assert.equal(await page.evaluate(() => JSON.parse(testPlanning.ws[0].event.description).group), '');
+  assert.equal(await card.locator('.ha-closure-item').count(), 0);
+  assert.match(await card.locator('.ha-launch').innerText(), /Programmation ponctuelle/);
+  await button('Ajouter une exclusion').click();
+  await card.locator('input[name="summary"]').fill('Arrêt');
+  await card.locator('input[name="start"]').fill(`${day}T00:00`);
+  await card.locator('input[name="end"]').fill(`${shiftDay(day, 1)}T00:00`);
+  await button('Vérifier la programmation').click(); await confirm();
+  await page.waitForFunction(() => testPlanning.ws.length === 2 && !testPlanning.card._busy);
+  assert.equal(await page.evaluate(() => testPlanning.ws[1].entity_id), 'calendar.test_a');
+  assert.equal(await page.evaluate(() => JSON.parse(testPlanning.ws[1].event.description).kind), 'closure');
+  assert.match(await card.locator('.ha-launch').innerText(), /Bloqué par exclusion/);
+  await button('Ajouter une programmation').click();
+  await card.locator('input[name="date"]').fill(day);
+  await card.locator('input[name="time"]').fill('08:00');
+  await button('Vérifier la programmation').click();
+  assert.match(await card.locator('.ha-editor .ha-error').innerText(), /exclusion/);
+  assert.equal(await page.evaluate(() => testPlanning.ws.length), 2);
+  await card.getByRole('button', { name: 'Fermer', exact: true }).click();
+  await card.locator('.ha-closure-item [data-edit]').click();
+  await card.locator('input[name="end"]').fill(`${day}T06:00`);
+  await button('Vérifier la programmation').click(); await confirm();
+  await page.waitForFunction(() => testPlanning.ws.length === 3 && !testPlanning.card._busy);
+  assert.match(await card.locator('.ha-launch').innerText(), /Programmation ponctuelle/);
+  await card.getByRole('tab', { name: 'Horaires habituels' }).click();
+  await card.getByRole('button', { name: 'Ajouter un horaire', exact: true }).click();
+  assert.equal(await card.locator('select[name="group"]').count(), 0);
+  await card.locator('select[name="day"]').selectOption('1');
+  await card.locator('input[name="time"]').fill('01:00');
+  await button('Vérifier la programmation').click(); await confirm();
+  await page.waitForFunction(() => testPlanning.ws.length === 4 && !testPlanning.card._busy);
+  assert.equal(await page.evaluate(() => testPlanning.ws[3].entity_id), 'calendar.test_a');
+  assert.equal(await page.evaluate(() => testPlanning.ws[3].event.rrule), 'FREQ=WEEKLY;BYDAY=MO');
+  assert.equal(await page.evaluate(() => JSON.parse(testPlanning.ws[3].event.description).group), '');
+  // Named groups can share the calendar without conflicting at the same instant.
+  await mount(false, false, 'shared-groups');
+  for (const index of ['1', '0']) {
+    await button('Ajouter une programmation').click();
+    await card.locator('select[name="group"]').selectOption(index);
+    await card.locator('input[name="date"]').fill(day);
+    await card.locator('input[name="time"]').fill('06:00');
+    await button('Vérifier la programmation').click(); await confirm();
+    await page.waitForFunction(() => !testPlanning.card._busy && !testPlanning.card._editor);
+  }
+  assert.deepEqual(await page.evaluate(() => testPlanning.ws.map(w => JSON.parse(w.event.description).group)), ['Groupe B', 'Groupe A']);
+  assert.equal(await card.locator('.ha-launch').count(), 2);
   await mount(true);
   // Local HTTP Home Assistant can lack randomUUID; getRandomValues still works.
   await page.evaluate(() => { window.crypto.randomUUID = undefined; });
@@ -192,5 +255,5 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= 320), true);
   await card.screenshot({ path: fileURLToPath(new URL('test-results/mobile.png', root)) });
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: empty start, blank forms/groups, editor, local isolation, non-admin CRUD, weekly CRUD, timezone, exclusions, failures, retry deduplication, concurrent edit, HTML escaping, HA height resizing, desktop narrow container and 320px layout.');
+  console.log('Browser checks passed: single-calendar/no-group CRUD and weekly schedule, shared-group isolation, empty start, editor, legacy mode, timezone, exclusions, failures, concurrent edit, retry deduplication and HA resizing.');
 } finally { await browser.close(); }

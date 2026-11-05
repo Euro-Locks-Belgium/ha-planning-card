@@ -18,6 +18,7 @@ class Loader(yaml.SafeLoader):
     pass
 Loader.add_constructor('!input', lambda loader, node: {'__input__': loader.construct_scalar(node)})
 BLUEPRINT = yaml.load((Path(__file__).parents[1] / 'blueprints/planning-chauffe.yaml').read_text(encoding='utf-8'), Loader=Loader)
+SINGLE_BLUEPRINT = yaml.load((Path(__file__).parents[1] / 'blueprints/planning.yaml').read_text(encoding='utf-8'), Loader=Loader)
 
 def dt(value):
     if isinstance(value, datetime):
@@ -29,9 +30,11 @@ class StopRun(Exception):
     pass
 
 class Runner:
-    def __init__(self, kind='restart', test=True, start='2026-11-23T04:00:00+01:00'):
+    def __init__(self, kind='restart', test=True, start='2026-11-23T04:00:00+01:00', shared=False, group=''):
         self.now = dt(start) + timedelta(seconds=1)
-        self.inputs = dict(group_name='Test', heating_calendar='calendar.group', closure_calendar='calendar.closure', target_switches=['switch.one'], test_mode=test)
+        self.shared = shared
+        self.blueprint = SINGLE_BLUEPRINT if shared else BLUEPRINT
+        self.inputs = dict(group_name='Test', group_filter=group, planning_calendar='calendar.group', heating_calendar='calendar.group', closure_calendar='calendar.closure', target_switches=['switch.one'], test_mode=test)
         self.states = {'calendar.group': 'off', 'calendar.closure': 'off', 'switch.one': 'off'}
         self.events = {'calendar.group': [], 'calendar.closure': []}
         self.calls = []
@@ -41,8 +44,8 @@ class Runner:
         self.env.filters['from_json'] = self.from_json
         self.env.tests['has_value'] = lambda value: self.states.get(value) not in (None, 'unknown', 'unavailable')
         self.env.tests['is_state'] = lambda entity, value: self.states.get(entity) == value
-        self.env.globals.update(now=lambda: self.now, states=lambda entity: self.states.get(entity, 'unknown'), as_datetime=dt, as_local=lambda value: dt(value).astimezone(ZONE), as_timestamp=self.timestamp, timedelta=timedelta)
-        self.context = {'trigger': {'platform': 'calendar', 'calendar_event': {'start': start, 'description': json.dumps({'planning_chauffe': 1, 'kind': kind})}}}
+        self.env.globals.update(now=lambda: self.now, states=lambda entity: self.states.get(entity, 'unknown'), state_attr=lambda entity, attr: 'Mon planning' if attr == 'friendly_name' else None, as_datetime=dt, as_local=lambda value: dt(value).astimezone(ZONE), as_timestamp=self.timestamp, timedelta=timedelta)
+        self.context = {'trigger': {'platform': 'calendar', 'calendar_event': {'start': start, 'description': json.dumps({'planning_chauffe': 1, 'kind': kind, **({'group': group} if shared else {})})}}}
         self.events['calendar.group'].append({'start': start, 'end': (dt(start) + timedelta(minutes=5)).isoformat(), 'description': self.context['trigger']['calendar_event']['description']})
     @staticmethod
     def from_json(value, default=None):
@@ -110,18 +113,18 @@ class Runner:
                     for entity in target['entity_id']:
                         self.states[entity] = 'on'
     def run(self):
-        for k, v in BLUEPRINT['variables'].items():
+        for k, v in self.blueprint['variables'].items():
             self.context[k] = self.render(v)
         try:
-            if all(self.condition(c) for c in BLUEPRINT['conditions']):
-                self.sequence(BLUEPRINT['actions'])
+            if all(self.condition(c) for c in self.blueprint['conditions']):
+                self.sequence(self.blueprint['actions'])
         except StopRun:
             pass
         return [call for call in self.calls if call[0] == 'switch.turn_on']
     def closure(self, start, end):
-        self.events['calendar.closure'].append({'start': start, 'end': end, 'summary': 'Fermeture'})
-    def restart(self, start='2026-11-23T06:00:00+01:00', replace=True):
-        self.events['calendar.group'].append({'start': start, 'end': (dt(start) + timedelta(minutes=5)).isoformat(), 'description': json.dumps({'planning_chauffe': 1, 'kind': 'restart', 'replace': replace})})
+        self.events['calendar.group' if self.shared else 'calendar.closure'].append({'start': start, 'end': end, 'summary': 'Fermeture', **({'description': json.dumps({'planning_chauffe': 1, 'kind': 'closure'})} if self.shared else {})})
+    def restart(self, start='2026-11-23T06:00:00+01:00', replace=True, group=None):
+        self.events['calendar.group'].append({'start': start, 'end': (dt(start) + timedelta(minutes=5)).isoformat(), 'description': json.dumps({'planning_chauffe': 1, 'kind': 'restart', 'replace': replace, **({'group': self.inputs['group_filter'] if group is None else group} if self.shared else {})})})
 
 class BlueprintTests(unittest.TestCase):
     def test_default_is_test_mode(self):
@@ -207,6 +210,68 @@ class BlueprintTests(unittest.TestCase):
         r = Runner(kind='weekly', test=False, start='2026-11-28T23:59:30+01:00')
         r.now = dt('2026-11-29T00:00:10+01:00')
         r.restart('2026-11-24T06:00:00+01:00')
+        self.assertEqual(r.run(), [])
+
+class SingleCalendarTests(unittest.TestCase):
+    def test_one_calendar_input_and_test_mode_default(self):
+        inputs = SINGLE_BLUEPRINT['blueprint']['input']
+        self.assertIn('planning_calendar', inputs)
+        self.assertNotIn('closure_calendar', inputs)
+        self.assertIs(inputs['test_mode']['default'], True)
+    def test_program_does_not_block_itself(self):
+        r = Runner(shared=True, test=False)
+        self.assertEqual(len(r.run()), 1)
+        self.assertTrue(all(c[2]['entity_id'] == 'calendar.group' for c in r.calls if c[0] == 'calendar.get_events'))
+    def test_shared_test_mode_has_no_switch_commands(self):
+        self.assertEqual(Runner(shared=True).run(), [])
+    def test_notification_uses_calendar_name_when_label_empty(self):
+        r = Runner(shared=True)
+        r.inputs['group_name'] = ''
+        r.run()
+        note = next(c for c in r.calls if c[0] == 'persistent_notification.create')
+        self.assertEqual(note[1]['title'], 'TEST - Mon planning')
+    def test_exclusion_is_never_a_start_command(self):
+        self.assertEqual(Runner(kind='closure', shared=True, test=False).run(), [])
+    def test_typed_exclusion_blocks_and_end_is_exclusive(self):
+        r = Runner(shared=True, test=False)
+        r.closure('2026-11-09', '2026-11-24')
+        self.assertEqual(r.run(), [])
+        r = Runner(shared=True, test=False)
+        r.closure('2026-11-09T00:00:00+01:00', '2026-11-23T04:00:00+01:00')
+        self.assertEqual(len(r.run()), 1)
+    def test_unmanaged_overlapping_event_does_not_block(self):
+        r = Runner(shared=True, test=False)
+        r.events['calendar.group'].append({'start': '2026-11-23', 'end': '2026-11-24', 'description': 'Autre événement'})
+        self.assertEqual(len(r.run()), 1)
+    def test_group_filter_does_not_execute_another_group(self):
+        r = Runner(shared=True, test=False, group='A')
+        r.inputs['group_filter'] = 'B'
+        self.assertEqual(r.run(), [])
+        r = Runner(shared=True, test=False, group='A')
+        r.inputs['group_filter'] = ''
+        self.assertEqual(r.run(), [])
+    def test_replacement_is_scoped_to_group(self):
+        r = Runner(kind='weekly', shared=True, test=False, group='A')
+        r.restart(group='B')
+        self.assertEqual(len(r.run()), 1)
+        r = Runner(kind='weekly', shared=True, test=False, group='A')
+        r.restart(group='A')
+        self.assertEqual(r.run(), [])
+    def test_exclusion_blocks_all_groups(self):
+        for group in ('', 'A', 'B'):
+            r = Runner(shared=True, test=False, group=group)
+            r.closure('2026-11-23', '2026-11-24')
+            self.assertEqual(r.run(), [])
+    def test_failures_stale_event_and_late_trigger_still_block(self):
+        for failure in ('broken_response', 'fail_service'):
+            r = Runner(shared=True, test=False)
+            setattr(r, failure, True)
+            self.assertEqual(r.run(), [])
+        r = Runner(shared=True, test=False)
+        r.events['calendar.group'] = []
+        self.assertEqual(r.run(), [])
+        r = Runner(shared=True, test=False)
+        r.now += timedelta(minutes=2)
         self.assertEqual(r.run(), [])
 
 if __name__ == '__main__':

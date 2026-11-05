@@ -100,3 +100,43 @@ test('état initial entièrement vide, sans groupes ou événements préremplis'
   assert.equal(state.selected, '2026-11-05');
   assert.equal(M.validateConfig({ title: 'Planning de chauffe' }).title, 'Planning');
 });
+test('un seul calendrier suffit, sans groupe ni calendrier d’exclusions', () => {
+  const config = M.validateConfig({ calendar: 'calendar.planning' });
+  assert.equal(config.demo, false);
+  assert.equal(config.groups.length, 0);
+  assert.deepEqual(M.resolveGroups(config, 'Mon planning'), [{ name: 'Mon planning', calendar: 'calendar.planning', id: '' }]);
+  const raw = { uid: 'r', summary: 'Programme', start: base().start, end: base().end, description: JSON.stringify({ planning_chauffe: 1, kind: 'restart', group: '' }) };
+  const e = M.normalizeEvent(raw, config.calendar, 'shared', null, zone, M.resolveGroups(config));
+  assert.equal(e.role, 'group');
+  assert.equal(e.groupIndex, 0);
+  assert.equal(M.isClosed([e], e.start), false);
+  assert.equal(M.eventStatus(e, [e], zone), 'planned');
+  const partial = M.validateConfig({ calendar: 'calendar.planning', closure_calendar: 'calendar.planning', groups: [{ name: '', calendar: '' }] });
+  assert.equal(M.resolveGroups(partial, 'Mon planning').length, 1);
+  assert.equal(M.resolveGroups(partial, 'Mon planning')[0].id, '');
+});
+test('exclusions typées dans le même calendrier ; événements ordinaires ignorés', () => {
+  const groups = [{ name: 'Mon planning', id: '', calendar: 'calendar.p' }];
+  const raw = { uid: 'c', summary: 'Exclusion', start: '2026-11-23', end: '2026-11-24', description: JSON.stringify({ planning_chauffe: 1, kind: 'closure' }) };
+  const c = M.normalizeEvent(raw, 'calendar.p', 'shared', null, zone, groups);
+  assert.equal(c.role, 'closure');
+  assert.equal(M.isClosed([c], base().start), true);
+  const ordinary = M.normalizeEvent({ ...raw, description: 'Réunion' }, 'calendar.p', 'shared', null, zone, groups);
+  assert.equal(ordinary.role, 'group');
+  assert.equal(M.isClosed([ordinary], base().start), false);
+  assert.equal(M.eventStatus(ordinary, [ordinary], zone), 'external');
+});
+test('les groupes partagés ne remplacent ni ne dédupliquent les autres groupes', () => {
+  const groups = M.resolveGroups(M.validateConfig({ calendar: 'calendar.p', groups: [{ name: 'A' }, { name: 'B' }] }));
+  const raw = { uid: 'w', summary: 'Habituel A', start: base().start, end: base().end, description: JSON.stringify({ planning_chauffe: 1, kind: 'weekly', group: 'A' }) };
+  const w = M.normalizeEvent(raw, 'calendar.p', 'shared', null, zone, groups);
+  const r = M.normalizeEvent({ ...raw, uid: 'r', description: JSON.stringify({ planning_chauffe: 1, kind: 'restart', group: 'B', replace: true }) }, 'calendar.p', 'shared', null, zone, groups);
+  assert.equal(w.groupIndex, 0);
+  assert.equal(r.groupIndex, 1);
+  assert.equal(M.eventStatus(w, [w, r], zone), 'planned');
+  assert.equal(M.validateDraft({ ...base(), kind: 'weekly', calendar: 'calendar.p', group: 'B' }, [w], zone, now), '');
+  assert.equal(M.validateDraft({ ...base(), calendar: 'calendar.p', group: 'A' }, [r], zone, now), '');
+  assert.throws(() => M.validateConfig({ calendar: 'calendar.p', groups: [{ name: 'A' }, { name: 'A' }] }), /distincts/);
+  const unknown = M.normalizeEvent({ ...raw, description: JSON.stringify({ planning_chauffe: 1, kind: 'restart', group: 'C' }) }, 'calendar.p', 'shared', null, zone, groups);
+  assert.equal(M.eventStatus(unknown, [unknown], zone), 'external');
+});

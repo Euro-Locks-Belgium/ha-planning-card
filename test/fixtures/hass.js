@@ -1,4 +1,4 @@
-window.setupPlanningTest = (demo = true, empty = false) => {
+window.setupPlanningTest = (demo = true, empty = false, mode = 'legacy') => {
   const card = document.querySelector('ha-planning-card');
   const calendars = ['calendar.test_fermetures', 'calendar.test_a', 'calendar.test_b', 'calendar.test_c'];
   const rows = Object.fromEntries(calendars.map(c => [c, []]));
@@ -32,6 +32,6 @@ window.setupPlanningTest = (demo = true, empty = false) => {
     },
   };
   window.testPlanning = { card, hass, rows, ws, reads, failReads(value) { failRead = value; }, failWrites(value) { failWrite = value; }, loseNextReply() { loseReply = true; } };
-  card.setConfig(empty ? { type: 'custom:ha-planning-card', demo, groups: [] } : { type: 'custom:ha-planning-card', demo, closure_calendar: calendars[0], groups: [{ name: 'Groupe A', calendar: calendars[1] }, { name: 'Groupe B', calendar: calendars[2] }, { name: 'Groupe C', calendar: calendars[3] }] });
+  card.setConfig(empty ? { type: 'custom:ha-planning-card', demo, groups: [] } : mode !== 'legacy' ? { type: 'custom:ha-planning-card', demo, calendar: calendars[1], groups: mode === 'single' ? [] : [{ name: 'Groupe A' }, { name: 'Groupe B' }] } : { type: 'custom:ha-planning-card', demo, closure_calendar: calendars[0], groups: [{ name: 'Groupe A', calendar: calendars[1] }, { name: 'Groupe B', calendar: calendars[2] }, { name: 'Groupe C', calendar: calendars[3] }] });
   card.hass = hass;
 };
