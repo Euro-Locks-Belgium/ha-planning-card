@@ -1,7 +1,7 @@
-/* Planning de chauffe 0.2.0 | Euro-Locks Belgium */
+/* Planning 0.2.1 | Euro-Locks Belgium */
 (() => {
 'use strict';
-const VERSION = "0.2.0";
+const VERSION = "0.2.1";
 const MIN_LEAD_MINUTES = 20;
 const META_VERSION = 1;
 function newEventId() {
@@ -425,6 +425,6 @@ class PlanningChauffeCard extends HTMLElement {
 if (!customElements.get('ha-planning-chauffe-card')) customElements.define('ha-planning-chauffe-card', PlanningChauffeCard);
 if (!customElements.get('ha-planning-card')) customElements.define('ha-planning-card', class extends PlanningChauffeCard {});
 window.customCards = window.customCards || [];
-if (!window.customCards.some(c => c.type === 'ha-planning-card')) window.customCards.push({ type: 'ha-planning-card', name: 'Planning', description: 'Programmations, horaires récurrents et exclusions. Démarre vide.', preview: true, documentationURL: 'https://github.com/Euro-Locks-Belgium/ha-planning-chauffe-card' });
+if (!window.customCards.some(c => c.type === 'ha-planning-card')) window.customCards.push({ type: 'ha-planning-card', name: 'Planning', description: 'Programmations, horaires récurrents et exclusions. Démarre vide.', preview: true, documentationURL: 'https://github.com/Euro-Locks-Belgium/ha-planning-card' });
 
 })();

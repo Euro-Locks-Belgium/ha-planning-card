@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1 — 2026-11-05
+
+- Dépôt GitHub renommé en `ha-planning-card`.
+- Fichier HACS et package renommés en `ha-planning-card.js` et `ha-planning-card`.
+- Liens de documentation et d'import du blueprint mis à jour.
+- Ancien type de carte conservé comme alias ; procédure de migration HACS documentée.
+
 ## 0.2.0 — 2026-11-05
 
 - Nouveau nom : Planning, avec un type de carte générique et compatibilité du type historique.

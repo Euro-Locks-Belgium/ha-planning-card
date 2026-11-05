@@ -1,13 +1,13 @@
 {
-  "name": "ha-planning-chauffe-card",
-  "version": "0.2.0",
+  "name": "ha-planning-card",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "Home Assistant planning dashboard card",
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test test/*.test.mjs",
-    "check": "node --check dist/ha-planning-chauffe-card.js"
+    "check": "node --check dist/ha-planning-card.js"
   },
   "engines": {
     "node": ">=20"

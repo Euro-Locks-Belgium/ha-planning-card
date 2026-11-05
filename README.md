@@ -12,8 +12,8 @@ date ou heure préremplie. Le mode local ne crée rien dans Home Assistant.
 ## Installer ou mettre à jour avec HACS
 
 1. Dans **HACS → ⋮ → Dépôts personnalisés**, ajouter
-   `https://github.com/Euro-Locks-Belgium/ha-planning-chauffe-card`, type **Dashboard**.
-2. Télécharger ou mettre à jour **Planning** vers **v0.2.0**.
+   `https://github.com/Euro-Locks-Belgium/ha-planning-card`, type **Dashboard**.
+2. Télécharger ou mettre à jour **Planning** vers **v0.2.1**.
 3. Recharger complètement le navigateur ou l'application Home Assistant.
 4. Ajouter la carte **Planning**, ou une carte manuelle :
 
@@ -27,16 +27,24 @@ groups: []
 `demo: true` active un espace local vide pour essayer la carte. Les modifications
 locales sont réinitialisées au rechargement. Aucun exemple n'est ajouté.
 
-Le dépôt et le nom du fichier conservent leur ancien identifiant technique pour
-permettre les mises à jour des installations existantes. L'ancien type
-`custom:ha-planning-chauffe-card` reste compatible ; le nom affiché est **Planning**.
+Le dépôt et le fichier utilisent désormais le nom **ha-planning-card**. L'ancien
+type `custom:ha-planning-chauffe-card` reste compatible pour les cartes existantes.
 Si votre carte a un titre personnalisé, vous pouvez le modifier dans son éditeur.
+
+### Migration depuis la version 0.2.0 ou précédente
+
+- Utiliser la nouvelle adresse du dépôt dans HACS, puis télécharger **v0.2.1**.
+- GitHub redirige l'ancienne adresse et conserve l'historique du dépôt.
+- Vérifier la ressource JavaScript ci-dessous : si HA référence toujours l'ancien
+  dossier ou l'ancien fichier, remplacer cette entrée par le nouveau chemin.
+- Recharger complètement le navigateur. Les calendriers, événements et groupes
+  configurés ne sont pas supprimés par le renommage.
 
 Si la carte n'apparaît pas, vérifier cette ressource, de type **Module JavaScript**,
 dans **Paramètres → Tableaux de bord → ⋮ → Ressources** :
 
 ```text
-/hacsfiles/ha-planning-chauffe-card/ha-planning-chauffe-card.js
+/hacsfiles/ha-planning-card/ha-planning-card.js
 ```
 
 ## Configurer vos groupes
@@ -147,7 +155,7 @@ n'exécute aucune commande.
 1. Ouvrir **Paramètres → Automatisations et scènes → Blueprints → Importer**.
 2. Importer :
 
-   `https://github.com/Euro-Locks-Belgium/ha-planning-chauffe-card/blob/v0.2.0/blueprints/planning-chauffe.yaml`
+   `https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/v0.2.1/blueprints/planning-chauffe.yaml`
 
 3. Créer une automatisation par groupe. Renseigner son nom et ses calendriers.
 4. Conserver **Mode test = activé**. La sélection d'appareils peut rester vide.
@@ -193,7 +201,7 @@ Aucune dépendance JavaScript à l'exécution. Le fichier livré est autonome.
 ```sh
 node scripts/build.mjs
 node --test test/*.test.mjs
-node --check dist/ha-planning-chauffe-card.js
+node --check dist/ha-planning-card.js
 python -m pip install -r test/requirements.txt
 python test/blueprint_test.py
 ```

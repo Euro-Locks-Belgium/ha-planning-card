@@ -8,7 +8,7 @@ import { toInstant, localMinute, dayOf, shiftDay } from '../src/model.js';
 const require = process.env.PLANNING_NODE_MODULES ? createRequire(`${process.env.PLANNING_NODE_MODULES.replaceAll('\\', '/')}/package.json`) : createRequire(import.meta.url);
 const { chromium } = require('playwright');
 const root = new URL('../', import.meta.url);
-const bundle = await readFile(new URL('dist/ha-planning-chauffe-card.js', root), 'utf8');
+const bundle = await readFile(new URL('dist/ha-planning-card.js', root), 'utf8');
 const fixture = await readFile(new URL('test/fixtures/hass.js', root), 'utf8');
 const browser = await chromium.launch({ headless: true, ...(process.env.PLANNING_BROWSER ? { executablePath: process.env.PLANNING_BROWSER } : {}) });
 const page = await browser.newPage({ viewport: { width: 1100, height: 1200 }, timezoneId: 'America/New_York' });
