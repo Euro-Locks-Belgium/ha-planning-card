@@ -1,0 +1,15 @@
+node_modules/
+.test-deps/
+__pycache__/
+.env
+.env.*
+!.env.example
+.secman/
+secrets.yaml
+*.pem
+*.key
+test-results/
+playwright-report/
+coverage/
+*.log
+.DS_Store
