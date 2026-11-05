@@ -1,13 +1,15 @@
 {
   "name": "ha-planning-chauffe-card",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Home Assistant heating calendar dashboard card",
+  "description": "Home Assistant planning dashboard card",
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --test test/*.test.mjs",
     "check": "node --check dist/ha-planning-chauffe-card.js"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

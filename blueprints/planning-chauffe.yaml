@@ -1,7 +1,7 @@
 blueprint:
-  name: Planning de chauffe - démarrage d'un groupe
+  name: Planning - démarrage d'un groupe
   description: >-
-    Exécute les événements créés par la carte Planning de chauffe. Une fermeture
+    Exécute les événements créés par la carte Planning. Une exclusion
     bloque tous les démarrages. Une reprise peut remplacer l'horaire hebdomadaire
     du cycle dimanche-samedi. Le mode test est activé par défaut : il génère une
     notification sans commander de relais. Créer une automatisation par groupe.
@@ -14,23 +14,23 @@ blueprint:
   input:
     group_name:
       name: Nom du groupe
-      default: Groupe de chauffe
+      default: ""
       selector:
         text: {}
     heating_calendar:
-      name: Calendrier de chauffe du groupe
+      name: Calendrier du groupe
       selector:
         entity:
           filter:
             domain: calendar
     closure_calendar:
-      name: Calendrier des fermetures
+      name: Calendrier des exclusions
       selector:
         entity:
           filter:
             domain: calendar
     target_switches:
-      name: Relais à activer
+      name: Appareils à activer
       description: Peut rester vide en mode test. Sélectionner uniquement les relais de ce groupe.
       default: []
       selector:
@@ -115,8 +115,8 @@ actions:
             data:
               notification_id: "{{ notification_id }}"
               title: "{{ group_name }} : démarrage bloqué"
-              message: Une fermeture est active à l'heure prévue. Aucun relais n'a été commandé.
-          - stop: Fermeture active
+              message: Une exclusion est active à l'heure prévue. Aucun relais n'a été commandé.
+          - stop: Exclusion active
   - action: calendar.get_events
     target:
       entity_id: !input heating_calendar
@@ -214,4 +214,4 @@ actions:
       message: >-
         {{ 'Tous les relais sélectionnés indiquent on.' if wait.completed
            else 'La commande a été envoyée mais tous les relais ne confirment pas on. Vérifiez le groupe.' }}
-        Ce retour ne mesure pas la température des machines.
+        Ce retour confirme uniquement l’état des appareils sélectionnés.

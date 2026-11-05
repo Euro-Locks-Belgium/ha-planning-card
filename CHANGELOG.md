@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 — 2026-11-05
+
+- Nouveau nom : Planning, avec un type de carte générique et compatibilité du type historique.
+- Suppression de toutes les données et des groupes préremplis ; formulaires vierges.
+- Gestion des groupes depuis l’éditeur visuel.
+- Redimensionnement horizontal et vertical dans HA Sections.
+- Mise en page selon la largeur du composant et calendrier qui utilise la hauteur attribuée.
+- Tests des états vides et du redimensionnement.
+
 ## 0.1.0 — 2026-11-05
 
 - Première carte installable depuis un dépôt personnalisé HACS.

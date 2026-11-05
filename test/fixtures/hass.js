@@ -1,6 +1,6 @@
-window.setupPlanningTest = (demo = true) => {
-  const card = document.querySelector('ha-planning-chauffe-card');
-  const calendars = ['calendar.test_fermetures', 'calendar.test_frech', 'calendar.test_grand', 'calendar.test_20'];
+window.setupPlanningTest = (demo = true, empty = false) => {
+  const card = document.querySelector('ha-planning-card');
+  const calendars = ['calendar.test_fermetures', 'calendar.test_a', 'calendar.test_b', 'calendar.test_c'];
   const rows = Object.fromEntries(calendars.map(c => [c, []]));
   const ws = [], reads = [];
   let failRead = false, failWrite = false, loseReply = false;
@@ -32,6 +32,6 @@ window.setupPlanningTest = (demo = true) => {
     },
   };
   window.testPlanning = { card, hass, rows, ws, reads, failReads(value) { failRead = value; }, failWrites(value) { failWrite = value; }, loseNextReply() { loseReply = true; } };
-  card.setConfig({ type: 'custom:ha-planning-chauffe-card', demo, closure_calendar: calendars[0], groups: [{ name: 'Frech', calendar: calendars[1] }, { name: 'Grand Bain', calendar: calendars[2] }, { name: 'Frech 20', calendar: calendars[3] }] });
+  card.setConfig(empty ? { type: 'custom:ha-planning-card', demo, groups: [] } : { type: 'custom:ha-planning-card', demo, closure_calendar: calendars[0], groups: [{ name: 'Groupe A', calendar: calendars[1] }, { name: 'Groupe B', calendar: calendars[2] }, { name: 'Groupe C', calendar: calendars[3] }] });
   card.hass = hass;
 };

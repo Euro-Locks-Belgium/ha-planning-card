@@ -27,7 +27,7 @@ test('fermeture [début, fin), y compris traversée de minuit', () => {
 test('reprise dans une fermeture refusée ; horaire récurrent reste visible mais bloqué', () => {
   const c = event('closure', '2026-11-09T00:00:00+01:00', '2026-11-23T00:00:00+01:00');
   const d = { ...base(), start: '2026-11-15T17:00:00.000Z', end: '2026-11-15T17:05:00.000Z' };
-  assert.match(M.validateDraft(d, [c], zone, now), /fermeture/);
+  assert.match(M.validateDraft(d, [c], zone, now), /exclusion/);
   const w = event('weekly', d.start, d.end);
   assert.equal(M.eventStatus(w, [w, c], zone), 'closed');
 });
@@ -58,7 +58,7 @@ test('un seul horaire hebdomadaire par groupe', () => {
 });
 test('configuration exige des calendriers distincts ; mode démo sans calendrier', () => {
   assert.equal(M.validateConfig({}).demo, true);
-  assert.throws(() => M.validateConfig({ demo: false }));
+  assert.deepEqual(M.validateConfig({ demo: false }).groups, []);
   assert.throws(() => M.validateConfig({ demo: false, closure_calendar: 'calendar.x', groups: [{ name: 'A', calendar: 'calendar.x' }] }), /distincts/);
   assert.equal(M.validateConfig({ demo: false, closure_calendar: 'calendar.x', groups: [{ name: 'A', calendar: 'calendar.y' }] }).groups.length, 1);
 });
@@ -91,9 +91,12 @@ test('prochain horaire respecte le délai et la récurrence locale', () => {
 test('grille inclut les cycles voisins pour évaluer les remplacements', () => {
   assert.deepEqual(M.viewRange('2026-11'), { start: '2026-10-26', end: '2026-12-07', count: 42, queryStart: '2026-10-19', queryEnd: '2026-12-14' });
 });
-test('démonstration dynamique, fermetures et trois groupes', () => {
-  const { events, selected } = M.demoEvents(M.validateConfig({}), zone, now);
-  assert.equal(events.filter(e => e.role === 'closure').length, 1);
-  assert.equal(events.filter(e => e.meta?.kind === 'restart').length, 2);
-  assert.equal(selected, '2026-11-23');
+test('état initial entièrement vide, sans groupes ou événements préremplis', () => {
+  const config = M.validateConfig({});
+  assert.deepEqual(config.groups, []);
+  assert.equal(config.title, 'Planning');
+  const state = M.emptyLocalState(zone, now);
+  assert.deepEqual(state.events, []);
+  assert.equal(state.selected, '2026-11-05');
+  assert.equal(M.validateConfig({ title: 'Planning de chauffe' }).title, 'Planning');
 });

@@ -1,164 +1,192 @@
-# Planning de chauffe — Home Assistant
+# Planning — Home Assistant
 
-Une carte de tableau de bord pour programmer les remises en chauffe par groupe de
-machines, gérer les fermetures et conserver une semaine habituelle.
+Une carte de planning pour des programmations ponctuelles, des horaires récurrents
+et des périodes d'exclusion. Elle n'est pas limitée à la chauffe.
 
-**Version 0.1.0 : version de test.** La carte démarre en démonstration. Le blueprint
-fourni démarre en mode test (notifications, sans commande de relais). Rien n'est
-installé ni activé sur votre Home Assistant par l'ajout du dépôt GitHub.
+**Le planning démarre entièrement vide** : aucun groupe, aucun horaire, aucune
+exclusion et aucun événement de démonstration. Les formulaires n'imposent aucune
+date ou heure préremplie. Le mode local ne crée rien dans Home Assistant.
 
-![Aperçu de la carte en mode démonstration](docs/preview.png)
+![Planning vide](docs/preview.png)
 
-## 1. Installer la carte avec HACS
+## Installer ou mettre à jour avec HACS
 
-1. Ouvrir **HACS → menu ⋮ → Dépôts personnalisés**.
-2. Ajouter `https://github.com/Euro-Locks-Belgium/ha-planning-chauffe-card` avec le
-   type **Dashboard** (ou **Tableau de bord** selon la traduction).
-3. Rechercher **Planning de chauffe**, puis télécharger la version **v0.1.0**.
-4. Recharger complètement le navigateur ou l'application Home Assistant.
-5. Ajouter une carte au tableau de bord : **Planning de chauffe**, ou une carte
-   manuelle avec cette configuration :
+1. Dans **HACS → ⋮ → Dépôts personnalisés**, ajouter
+   `https://github.com/Euro-Locks-Belgium/ha-planning-chauffe-card`, type **Dashboard**.
+2. Télécharger ou mettre à jour **Planning** vers **v0.2.0**.
+3. Recharger complètement le navigateur ou l'application Home Assistant.
+4. Ajouter la carte **Planning**, ou une carte manuelle :
 
 ```yaml
-type: custom:ha-planning-chauffe-card
-title: Planning de chauffe
+type: custom:ha-planning-card
+title: Planning
 demo: true
+groups: []
 ```
 
-La démonstration permet de tester les fermetures, les reprises, les modifications
-et les suppressions **sans créer d'événement Home Assistant et sans toucher aux
-relais**. Ses données sont fictives et sont réinitialisées au rechargement.
+`demo: true` active un espace local vide pour essayer la carte. Les modifications
+locales sont réinitialisées au rechargement. Aucun exemple n'est ajouté.
 
-Si la carte n'apparaît pas, vérifier dans **Paramètres → Tableaux de bord → ⋮ →
-Ressources** la présence de cette ressource, de type **Module JavaScript** :
+Le dépôt et le nom du fichier conservent leur ancien identifiant technique pour
+permettre les mises à jour des installations existantes. L'ancien type
+`custom:ha-planning-chauffe-card` reste compatible ; le nom affiché est **Planning**.
+Si votre carte a un titre personnalisé, vous pouvez le modifier dans son éditeur.
+
+Si la carte n'apparaît pas, vérifier cette ressource, de type **Module JavaScript**,
+dans **Paramètres → Tableaux de bord → ⋮ → Ressources** :
 
 ```text
 /hacsfiles/ha-planning-chauffe-card/ha-planning-chauffe-card.js
 ```
 
-Installation manuelle possible : copier le fichier de `dist/` dans le dossier
-`www/` de configuration, puis enregistrer `/local/ha-planning-chauffe-card.js`
-comme module JavaScript.
+## Configurer vos groupes
 
-## 2. Utiliser des calendriers partagés
+Dans l'éditeur de carte, cliquer sur **Ajouter un groupe**. La ligne ajoutée est
+vide : saisir son nom. On peut ajouter ou retirer jusqu'à 8 groupes depuis cet
+éditeur, sans écrire de YAML. Aucun groupe n'est créé automatiquement.
 
-Cette étape enregistre de vrais événements dans Home Assistant. Elle ne configure
-pas à elle seule l'exécution des relais.
+Pour utiliser des calendriers partagés :
 
-Un administrateur crée **quatre calendriers locaux dédiés** depuis **Paramètres →
-Appareils et services → Ajouter une intégration → Calendrier local** :
+1. Créer des **calendriers locaux dédiés** depuis **Paramètres → Appareils et
+   services → Ajouter une intégration → Calendrier local** : un calendrier par
+   groupe, plus un calendrier commun pour les exclusions.
+2. Dans l'éditeur de carte, désactiver **Mode local**.
+3. Choisir le calendrier des exclusions et celui de chaque groupe.
 
-- Planning chauffe — Fermetures
-- Planning chauffe — Frech
-- Planning chauffe — Grand Bain
-- Planning chauffe — Frech 20
+La carte reste vide et n'effectue aucune requête calendrier tant que cette
+configuration n'est pas complète. Retirer un groupe de la carte ne supprime pas
+son calendrier ou ses événements. Une mise à jour de la carte n'efface aucun
+calendrier existant.
 
-Dans l'éditeur de la carte, désactiver **Démonstration** puis choisir ces
-calendriers dans les listes. Le calendrier des fermetures est commun ; chaque
-groupe a son propre calendrier. La carte accepte de 1 à 8 groupes via YAML.
+Les événements sont enregistrés dans Home Assistant et partagés entre les
+utilisateurs. Aucun jeton n'est à saisir dans la carte. Un utilisateur standard
+doit disposer du droit de contrôle sur les calendriers sélectionnés.
 
-Exemple (adapter les identifiants réellement créés chez vous) :
+## Agrandir ou redimensionner la carte
+
+### Dans une vue Sections
+
+1. Mettre le tableau de bord en mode édition.
+2. Modifier la carte **Planning**.
+3. Ouvrir **Disposition / Layout**.
+4. Ajuster les **colonnes et les lignes**, ou activer **Carte pleine largeur**.
+5. Enregistrer.
+
+La carte accepte le redimensionnement horizontal et vertical : 14 lignes par
+défaut, 8 lignes minimum. Le calendrier grandit avec la hauteur attribuée. Sa mise
+en page utilise la largeur réelle de la carte, même sur un grand écran contenant
+plusieurs petites cartes. Les panneaux se placent sous le calendrier si la carte
+est étroite.
+
+La pleine largeur d'une carte est celle de sa **section**. Pour disposer de plus
+de place sur ordinateur, élargir aussi la section. Exemple de vue Sections :
 
 ```yaml
-type: custom:ha-planning-chauffe-card
-title: Planning moulage
-demo: false
-closure_calendar: calendar.planning_chauffe_fermetures
-groups:
-  - name: Frech
-    calendar: calendar.planning_chauffe_frech
-  - name: Grand Bain
-    calendar: calendar.planning_chauffe_grand_bain
-  - name: Frech 20
-    calendar: calendar.planning_chauffe_frech_20
+views:
+  - title: Planning
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        column_span: 2
+        cards:
+          - type: custom:ha-planning-card
+            demo: true
+            groups: []
+            grid_options:
+              columns: full
+              rows: 14
 ```
 
-Les calendriers doivent supporter création, modification et suppression
-d'événements (Calendrier local le permet). La carte utilise la session Home
-Assistant de l'utilisateur : aucun jeton à coller dans la carte. Un compte
-standard doit disposer du droit de contrôle sur ces calendriers. La création des
-intégrations et des automatisations reste une opération administrateur.
+### Pour une page entière
 
-## 3. Tester l'exécution côté Home Assistant
+Une vue **Panneau / Panel** accueille une seule carte sur toute sa largeur :
 
-HACS installe la carte JavaScript. **Le blueprint s'importe séparément** ; la
-carte seule n'exécute aucun démarrage.
+```yaml
+views:
+  - title: Planning
+    type: panel
+    cards:
+      - type: custom:ha-planning-card
+        demo: true
+        groups: []
+```
+
+Les vues Maçonnerie / Masonry n'offrent pas les mêmes réglages de taille. Passer à
+Sections ou Panneau pour un grand planning. L'onglet Disposition n'est pas proposé
+si la carte est imbriquée dans une pile ou une carte grille.
+
+[Documentation officielle du redimensionnement](https://www.home-assistant.io/dashboards/cards/#resizing-a-card).
+
+## Programmations et exclusions
+
+- **Programmation ponctuelle** : choisir un groupe, une date et une heure.
+- **Horaire habituel** : une série hebdomadaire par groupe, avec choix du jour et
+  de l'heure. Modifier ou supprimer cette série affecte toute la série.
+- **Remplacement facultatif** : cocher la case pour remplacer l'horaire habituel
+  du groupe pour le même cycle (dimanche 00:00 au dimanche suivant 00:00).
+- **Exclusion prioritaire** : pendant une période d'exclusion, les activations
+  sont bloquées. Le début est inclus et la fin est exclue. La fin d'une exclusion
+  ne déclenche aucune action.
+- Les heures sont celles du fuseau configuré dans Home Assistant, même si le
+  navigateur utilise un autre fuseau. Les heures ambiguës ou inexistantes lors
+  d'un changement d'heure sont refusées.
+- En mode connecté, programmer au moins **20 minutes à l'avance** : les
+  déclencheurs calendrier peuvent nécessiter environ 15 minutes d'actualisation.
+
+## Exécuter des actions côté Home Assistant
+
+La carte enregistre des événements. **Le blueprint s'importe séparément** ; HACS
+ne crée pas automatiquement de calendrier ni d'automatisation.
+
+Le blueprint fourni permet l'activation d'un groupe d'appareils `switch` (prises,
+relais, éclairage, etc.). Il utilise exclusivement `switch.turn_on`. Pour d'autres
+types d'actions, une automatisation adaptée est nécessaire ; la carte seule
+n'exécute aucune commande.
 
 1. Ouvrir **Paramètres → Automatisations et scènes → Blueprints → Importer**.
-2. Utiliser cette adresse :
+2. Importer :
 
-   `https://github.com/Euro-Locks-Belgium/ha-planning-chauffe-card/blob/v0.1.0/blueprints/planning-chauffe.yaml`
+   `https://github.com/Euro-Locks-Belgium/ha-planning-chauffe-card/blob/v0.2.0/blueprints/planning-chauffe.yaml`
 
-3. Créer **une automatisation par groupe** avec ce blueprint.
-4. Choisir le calendrier du groupe et le calendrier commun des fermetures.
-5. Conserver **Mode test = activé**. Les relais peuvent rester non sélectionnés.
-6. Dans la carte connectée, programmer un démarrage **au moins 20 minutes à
-   l'avance**, en dehors d'une fermeture.
-7. À l'heure prévue, consulter la notification Home Assistant **TEST — nom du
-   groupe** et la trace de l'automatisation.
+3. Créer une automatisation par groupe. Renseigner son nom et ses calendriers.
+4. Conserver **Mode test = activé**. La sélection d'appareils peut rester vide.
+5. Programmer un événement à plus de 20 minutes, hors exclusion.
+6. Vérifier la notification **TEST** et la trace de l'automatisation à l'heure prévue.
 
-L'automatisation tourne sur le serveur Home Assistant, même si tous les tableaux
-de bord sont fermés. Les événements sont conservés dans les calendriers du serveur.
+Le blueprint fonctionne sur le serveur même si le tableau de bord est fermé. Il
+relit le calendrier avant toute commande : un événement annulé ou modifié ne doit
+pas être exécuté depuis un ancien déclencheur. Une lecture indisponible bloque
+l'action. Il ne rattrape pas les déclenchements retardés de 90 secondes ou plus.
+La fin d'un événement n'éteint aucun appareil.
 
-### Passage ultérieur à de vraies commandes
+Pour passer en mode réel, sélectionner les appareils du groupe et désactiver le
+mode test dans l'automatisation. Si un appareil est indisponible, le groupe est
+bloqué. Après la commande, un retour `on` est attendu pendant 20 secondes maximum,
+puis une notification indique le résultat. Ce retour confirme l'état des
+appareils, pas le résultat physique d'un procédé.
 
-Sélectionner les relais `switch` du groupe dans l'automatisation, puis désactiver
-le mode test après avoir validé leur correspondance. La commande est exclusivement
-`switch.turn_on` : aucun `toggle`, aucun arrêt à la fin d'un événement.
+Les autres programmations Home Assistant ou les horaires propres aux appareils
+restent indépendants. Les désactiver ou les remplacer lors d'une bascule vers ce
+planning, pour éviter qu'ils contournent les exclusions.
 
-**Les programmations existantes restent indépendantes.** Pendant les essais,
-elles continuent à fonctionner. Lors de la bascule, un administrateur doit
-désactiver ou remplacer les anciens déclenchements Home Assistant / Shelly ; les
-fermetures de ce nouveau planning ne peuvent pas bloquer un autre programme.
+## Compatibilité et limites
 
-## Règles de fonctionnement
+- Home Assistant **2026.10.0 minimum** ; capacités de l'installation cible
+  vérifiées en lecture seule sur 2026.10.4.
+- Calendriers locaux permettant création, modification et suppression.
+- De 0 à 8 groupes ; configuration initiale vide.
+- Un horaire hebdomadaire par groupe ; pas de modification d'une seule occurrence
+  depuis la carte. Utiliser une programmation ponctuelle avec remplacement.
+- Relecture avant modification pour détecter un changement concurrent ; il ne
+  s'agit pas d'un verrou transactionnel entre clients.
+- Les événements sans les métadonnées de la carte sont affichés « non piloté » et
+  ignorés par le blueprint. Tout événement du calendrier des exclusions bloque
+  cependant les activations, même s'il a été créé ailleurs.
+- Aucun test sur des appareils réels ni modification de l'installation Home
+  Assistant n'est effectué lors de la publication GitHub.
 
-- **Fermeture prioritaire** : tout événement du calendrier des fermetures bloque
-  les démarrages entre son début inclus et sa fin exclue. Une fermeture peut
-  couvrir plusieurs semaines. Sa fin ne commande aucun appareil.
-- **Horaire habituel** : une série hebdomadaire par groupe, créée dans l'onglet
-  « Horaires habituels ». Une modification ou suppression concerne toute la série.
-- **Reprise ponctuelle** : date et heure propres à un groupe. Cocher « Remplacer
-  le démarrage habituel » pour remplacer l'horaire de ce groupe dans le même cycle
-  de production, du **dimanche 00:00 au dimanche suivant 00:00**, heure du site.
-  Sans cette case, le démarrage est ajouté. Une reprise pendant une fermeture
-  est refusée par la carte et bloquée par le blueprint.
-- **Pas de rattrapage automatique** : seuls les débuts d'événements déclenchent
-  le blueprint. Un déclenchement retardé de 90 secondes ou plus est ignoré. Après
-  une panne, prévoir une nouvelle reprise plutôt que démarrer tardivement.
-- **Annulation vérifiée côté serveur** : avant une commande, le blueprint relit
-  le calendrier du groupe et vérifie que l'événement déclencheur existe toujours.
-- **Calendrier illisible ou relais indisponible** : aucun démarrage du groupe.
-  Un échec de lecture ne vaut jamais autorisation de chauffe.
-- **Retour de commande** : en mode réel, attente de 20 secondes maximum pour le
-  retour `on` des relais, puis notification « relais activés » ou « retour
-  incomplet ». Ce retour ne mesure pas la température des machines.
-- **Fuseau horaire** : celui de Home Assistant, même si le navigateur utilise un
-  autre fuseau. Les heures locales inexistantes ou ambiguës lors des changements
-  d'heure sont refusées ; choisir une autre heure.
-- **Délai de programmation** : 20 minutes minimum pour un nouveau démarrage, car
-  les déclencheurs calendrier peuvent mettre environ 15 minutes à être actualisés.
-- **Modification concurrente** : relecture avant enregistrement. Si l'événement a
-  changé depuis l'ouverture du formulaire, la carte refuse de l'écraser. Cela
-  n'est pas un verrou transactionnel entre plusieurs clients.
-- **Événements externes** : les événements de chauffe sans les métadonnées de la
-  carte sont affichés « non piloté » et ignorés par le blueprint. Ne pas modifier
-  les descriptions techniques des événements depuis un autre éditeur.
-
-## Limites de cette première version
-
-- Carte et blueprint distincts : l'installation HACS n'ajoute pas automatiquement
-  les calendriers ou les automatisations.
-- Une série hebdomadaire par groupe ; pas d'édition d'une seule occurrence de
-  série. Utiliser une reprise ponctuelle et son option de remplacement.
-- Calendriers locaux recommandés ; les calendriers en lecture seule ne conviennent pas.
-- Le contrôle utilisateur standard et les API ont été testés avec une session HA
-  simulée. La version et les capacités de l'installation cible ont été vérifiées
-  en lecture seule sur **Home Assistant 2026.10.4**. **Aucune commande sur les
-  relais réels n'a été effectuée pour cette publication.** Le blueprint n'a pas
-  été importé dans cette installation pendant le développement.
-
-## Développement et vérification
+## Développement
 
 Aucune dépendance JavaScript à l'exécution. Le fichier livré est autonome.
 
@@ -166,40 +194,17 @@ Aucune dépendance JavaScript à l'exécution. Le fichier livré est autonome.
 node scripts/build.mjs
 node --test test/*.test.mjs
 node --check dist/ha-planning-chauffe-card.js
-```
-
-Vérification des décisions du blueprint avec services simulés :
-
-```sh
 python -m pip install -r test/requirements.txt
 python test/blueprint_test.py
 ```
 
-Essais navigateur facultatifs (Chromium / Playwright) :
+Essais navigateur facultatifs : installer Playwright 1.62.1 et Chromium, puis
+exécuter `node test/browser.mjs`. `PLANNING_BROWSER` peut désigner un Chromium
+système et `PLANNING_NODE_MODULES` un dossier de modules fourni. Les captures sont
+écrites dans `test-results/` et ignorées par Git.
 
-```sh
-npm install --no-save playwright@1.62.1
-npx playwright install chromium
-node test/browser.mjs
-```
-
-Un navigateur Chromium système peut être choisi via `PLANNING_BROWSER`. Un
-dossier de modules déjà fourni peut être choisi via `PLANNING_NODE_MODULES`.
-Les captures de vérification sont écrites dans `test-results/`, ignoré par Git.
-
-Les tests couvrent le mode démo isolé, les opérations calendrier d'un compte
-standard simulé, le fuseau du site, les fermetures, les remplacements, les refus
-d'accès, les reprises après réponse réseau perdue, les modifications concurrentes,
-l'affichage des textes non fiables et les petits écrans. Les tests du blueprint
-exécutent ses templates et ses branches avec des services simulés ; ils ne
-remplacent pas la validation complète par le moteur Home Assistant.
-
-## Documentation de référence
-
-- [Cartes personnalisées Home Assistant](https://contributors.home-assistant.io/frontend/custom-ui/card/)
-- [Calendrier local](https://www.home-assistant.io/integrations/local_calendar/)
-- [Déclencheurs calendrier](https://www.home-assistant.io/integrations/calendar/)
-- [Structure d'un dépôt de carte HACS](https://www.hacs.xyz/docs/publish/plugin/)
-
-Le code publié ne contient aucune configuration de production ni aucun identifiant
-secret. Les associations de relais restent dans votre Home Assistant.
+Les essais couvrent le démarrage vide, les champs vierges, l'éditeur de groupes,
+les opérations calendrier, les exclusions, le fuseau du site, les échecs réseau,
+les modifications concurrentes et le redimensionnement. Ils utilisent une API
+Home Assistant simulée. Les tests de blueprint vérifient ses templates et ses
+branches avec des services simulés, pas l'ensemble du moteur Home Assistant.

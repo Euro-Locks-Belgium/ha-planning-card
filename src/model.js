@@ -6,11 +6,7 @@ export function newEventId() {
   globalThis.crypto.getRandomValues(values);
   return `pc-${Array.from(values, n => n.toString(16).padStart(8, '0')).join('')}`;
 }
-export const DEFAULT_GROUPS = [
-  { name: 'Frech', calendar: '', day: 1, time: '01:00' },
-  { name: 'Frech – Grand Bain', calendar: '', day: 0, time: '23:20' },
-  { name: 'Frech 20', calendar: '', day: 0, time: '18:00' },
-];
+export const DEFAULT_GROUPS = [];
 export function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -84,12 +80,13 @@ export function eventStatus(event, events, zone) {
   return 'planned';
 }
 export function validateConfig(input) {
-  const config = { title: 'Planning de chauffe', demo: true, ...input };
-  config.groups = (input.groups || DEFAULT_GROUPS).map(g => ({ name: g.name || 'Groupe', calendar: g.calendar || '' }));
-  if (!config.groups.length || config.groups.length > 8) throw new Error('Configurez de 1 à 8 groupes.');
+  const config = { title: 'Planning', demo: true, ...input };
+  if (config.title === 'Planning de chauffe') config.title = 'Planning';
+  config.groups = (input.groups || DEFAULT_GROUPS).map(g => ({ name: g.name || '', calendar: g.calendar || '' }));
+  if (config.groups.length > 8) throw new Error('Configurez au maximum 8 groupes.');
   if (!config.demo) {
-    const ids = [config.closure_calendar, ...config.groups.map(g => g.calendar)];
-    if (ids.some(x => typeof x !== 'string' || !/^calendar\.[a-z0-9_]+$/.test(x))) throw new Error('Choisissez un calendrier de fermeture et un calendrier pour chaque groupe.');
+    const ids = [config.closure_calendar, ...config.groups.map(g => g.calendar)].filter(Boolean);
+    if (ids.some(x => typeof x !== 'string' || !/^calendar\.[a-z0-9_]+$/.test(x))) throw new Error('Choisissez des entités de type calendrier.');
     if (new Set(ids).size !== ids.length) throw new Error('Chaque groupe et les fermetures doivent utiliser des calendriers distincts.');
   }
   return config;
@@ -97,10 +94,10 @@ export function validateConfig(input) {
 export function validateDraft(draft, events, zone, now = Date.now(), demo = false) {
   const start = Date.parse(draft.start), end = Date.parse(draft.end);
   if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 'La fin doit être après le début.';
-  if (draft.kind === 'closure') return draft.summary?.trim() ? '' : 'Donnez un nom à la fermeture.';
+  if (draft.kind === 'closure') return draft.summary?.trim() ? '' : 'Donnez un libellé à la période d’exclusion.';
   if (!demo && start < now + MIN_LEAD_MINUTES * 60000) return `Programmez le démarrage au moins ${MIN_LEAD_MINUTES} minutes à l’avance.`;
-  if (isClosed(events, draft.start) && draft.kind === 'restart') return 'Ce démarrage se trouve pendant une fermeture. Modifiez la date ou la fermeture.';
-  if (events.some(e => e.calendar === draft.calendar && e.uid !== draft.uid && e.meta?.kind === 'restart' && e.start === draft.start && draft.kind === 'restart')) return 'Une reprise existe déjà pour ce groupe à cette heure.';
+  if (isClosed(events, draft.start) && draft.kind === 'restart') return 'Cette programmation se trouve pendant une exclusion. Modifiez la date ou l’exclusion.';
+  if (events.some(e => e.calendar === draft.calendar && e.uid !== draft.uid && e.meta?.kind === 'restart' && e.start === draft.start && draft.kind === 'restart')) return 'Une programmation existe déjà pour ce groupe à cette heure.';
   if (draft.kind === 'weekly' && events.some(e => e.calendar === draft.calendar && e.uid !== draft.uid && e.meta?.kind === 'weekly')) return 'Ce groupe possède déjà un horaire habituel. Modifiez cet horaire.';
   return '';
 }
@@ -125,25 +122,6 @@ export function viewRange(month) {
   const count = Math.ceil((((weekday(first) + 6) % 7) + days) / 7) * 7;
   return { start, end: shiftDay(start, count), count, queryStart: shiftDay(start, -7), queryEnd: shiftDay(start, count + 7) };
 }
-export function demoEvents(config, zone, now = Date.now()) {
-  const first = `${dayOf(now, zone).slice(0, 7)}-01`;
-  const monday = shiftDay(first, (8 - weekday(first)) % 7);
-  const closeStart = shiftDay(monday, 7), closeEnd = shiftDay(closeStart, 14);
-  const events = [];
-  const closure = { uid: 'demo-closure', summary: 'Arrêt de deux semaines', start: toInstant(`${closeStart}T00:00`, zone), end: toInstant(`${closeEnd}T00:00`, zone), description: JSON.stringify({ planning_chauffe: 1, kind: 'closure' }) };
-  events.push(normalizeEvent(closure, 'calendar.demo_closures', 'closure', null, zone));
-  config.groups.forEach((g, index) => {
-    const pattern = DEFAULT_GROUPS[index] || DEFAULT_GROUPS[0];
-    for (let i = -7; i < 65; i++) {
-      const day = shiftDay(first, i);
-      if (weekday(day) !== pattern.day) continue;
-      const start = toInstant(`${day}T${pattern.time}`, zone);
-      events.push(normalizeEvent({ uid: `demo-weekly-${index}`, summary: g.name, start, end: new Date(Date.parse(start) + 300000).toISOString(), rrule: `FREQ=WEEKLY;BYDAY=${['SU','MO','TU','WE','TH','FR','SA'][pattern.day]}`, description: JSON.stringify({ planning_chauffe: 1, kind: 'weekly' }) }, `calendar.demo_group_${index}`, 'group', index, zone));
-    }
-    if (index > 0) {
-      const start = toInstant(`${closeEnd}T${index === 1 ? '04:00' : '02:00'}`, zone);
-      events.push(normalizeEvent({ uid: `demo-restart-${index}`, summary: `Reprise ${g.name}`, start, end: new Date(Date.parse(start) + 300000).toISOString(), description: JSON.stringify({ planning_chauffe: 1, kind: 'restart', replace: true }) }, `calendar.demo_group_${index}`, 'group', index, zone));
-    }
-  });
-  return { events, selected: closeEnd };
+export function emptyLocalState(zone, now = Date.now()) {
+  return { events: [], selected: dayOf(now, zone) };
 }
