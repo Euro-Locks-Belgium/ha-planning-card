@@ -3,6 +3,10 @@
 Une carte de planning pour des programmations ponctuelles, des horaires récurrents
 et des périodes d'exclusion. Elle n'est pas limitée à la chauffe.
 
+**Version 0.4.0** : plusieurs horaires habituels, couleur et sélection des appareils
+par programmation. La mise à jour HACS installe la carte ; le blueprint Frech et
+son catalogue se configurent séparément.
+
 **Le planning démarre entièrement vide** : aucun groupe, aucun horaire, aucune
 exclusion et aucun événement de démonstration. Les formulaires n'imposent aucune
 date ou heure préremplie. Le mode local ne crée rien dans Home Assistant.
@@ -13,7 +17,7 @@ date ou heure préremplie. Le mode local ne crée rien dans Home Assistant.
 
 1. Dans **HACS → ⋮ → Dépôts personnalisés**, ajouter
    `https://github.com/Euro-Locks-Belgium/ha-planning-card`, type **Dashboard**.
-2. Télécharger ou mettre à jour **Planning** vers **v0.3.0**.
+2. Télécharger ou mettre à jour **Planning** vers **v0.4.0**.
 3. Recharger complètement le navigateur ou l'application Home Assistant.
 4. Ajouter la carte **Planning**, ou une carte manuelle :
 
@@ -33,7 +37,7 @@ Si votre carte a un titre personnalisé, vous pouvez le modifier dans son édite
 
 ### Migration depuis la version 0.2.0 ou précédente
 
-- Utiliser la nouvelle adresse du dépôt dans HACS, puis télécharger **v0.3.0**.
+- Utiliser la nouvelle adresse du dépôt dans HACS, puis télécharger **v0.4.0**.
 - GitHub redirige l'ancienne adresse et conserve l'historique du dépôt.
 - Vérifier la ressource JavaScript ci-dessous : si HA référence toujours l'ancien
   dossier ou l'ancien fichier, remplacer cette entrée par le nouveau chemin.
@@ -78,7 +82,7 @@ est sélectionné. Les données du mode local sont réinitialisées au rechargem
 
 Ouvrir **Groupes (facultatif)** seulement pour distinguer plusieurs ensembles
 d'appareils dans le même calendrier. Ajouter un nom par groupe. Chaque groupe
-peut avoir son horaire hebdomadaire et ses programmations ponctuelles.
+peut avoir plusieurs horaires hebdomadaires et ses programmations ponctuelles.
 
 Tous les groupes utilisent le même calendrier ; les exclusions s'appliquent à
 tous. Le nom d'un groupe sert à son association au blueprint : recopier exactement
@@ -154,10 +158,21 @@ si la carte est imbriquée dans une pile ou une carte grille.
 
 - **Programmation ponctuelle** : choisir une date et une heure. Le groupe ne
   s’affiche que si des groupes facultatifs ont été configurés.
-- **Horaire habituel** : une série hebdomadaire par groupe, avec choix du jour et
-  de l'heure. Modifier ou supprimer cette série affecte toute la série.
-- **Remplacement facultatif** : cocher la case pour remplacer l'horaire habituel
-  du groupe pour le même cycle (dimanche 00:00 au dimanche suivant 00:00).
+- **Horaire habituel** : plusieurs séries hebdomadaires dans le même calendrier,
+  avec choix du jour et de l'heure. Le bouton **Ajouter un horaire** reste
+  disponible. Modifier ou supprimer une série laisse les autres séries intactes.
+- **Heure** : deux menus pour les heures et les minutes (`00, 10, 20, 30, 40, 50`).
+  Une ancienne minute intermédiaire reste proposée lors d'une modification pour
+  éviter de déplacer un événement existant sans le demander.
+- **Couleur et libellé** : personnalisables pour chaque programmation, avec la
+  même couleur sur toutes les occurrences d'une série hebdomadaire.
+- **Appareils** : lorsque le catalogue est configuré, cocher les appareils de
+  cette programmation. Rien n'est sélectionné d'avance. Le catalogue est vide à
+  l'installation ; aucune machine du site n'est intégrée au code public.
+- **Remplacement facultatif** : choisir précisément la série à remplacer pour
+  le même cycle (dimanche 00:00 au dimanche suivant 00:00). Les autres horaires
+  restent actifs. Les anciens remplacements de tout un groupe sont conservés
+  et identifiés dans le formulaire lors d'une modification.
 - **Exclusion prioritaire** : pendant une période d'exclusion, les activations
   sont bloquées. Le début est inclus et la fin est exclue. La fin d'une exclusion
   ne déclenche aucune action.
@@ -172,15 +187,100 @@ si la carte est imbriquée dans une pile ou une carte grille.
 La carte enregistre des événements. **Le blueprint s'importe séparément** ; HACS
 ne crée pas automatiquement de calendrier ni d'automatisation.
 
+### Démarrage Frech avec sélection par programmation
+
+Le nouveau fichier [`blueprints/planning-frech.yaml`](blueprints/planning-frech.yaml)
+est prévu pour une seule automatisation par calendrier, même si la carte utilise
+des groupes facultatifs. Le calendrier contient le jour, l'heure, les appareils,
+la couleur et le remplacement éventuel. Un utilisateur peut ensuite ajouter
+autant de programmations que nécessaire depuis la carte.
+
+Pour installer ce parcours, importer le blueprint depuis :
+
+`https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/v0.4.0/blueprints/planning-frech.yaml`
+
+Un administrateur configure ensuite une fois :
+
+1. Le même calendrier dans la carte et l'automatisation.
+2. Les appareils dans **Appareils programmables**, avec un nom et un identifiant.
+3. Le catalogue du blueprint qui associe ces identifiants aux relais, retours
+   d'entrée et numéros de machine. Les événements ne peuvent choisir que des
+   identifiants autorisés ; ils ne peuvent pas fournir une autre action à exécuter.
+4. Le script de démarrage existant, acceptant `switch_entity`, `input_entity`,
+   `frech_number` et `wait_time`. Conserver d'abord **Mode test = activé**.
+
+Exemple fictif de configuration de carte (à adapter, aucune donnée par défaut) :
+
+```yaml
+type: custom:ha-planning-card
+calendar: calendar.mon_planning
+devices:
+  - id: machine_a
+    name: Machine A
+  - id: machine_b
+    name: Machine B
+```
+
+**Gestion des appareils :** l’éditeur de carte permet de modifier les noms et
+identifiants proposés. Les associations techniques (relais, entrée, numéro) restent
+dans le catalogue du blueprint. Un écran unique de configuration technique n’est
+pas inclus dans cette version. Retirer un appareil de la carte ne le retire pas
+du blueprint et ne supprime pas ses programmations existantes.
+
+Catalogue correspondant dans le blueprint :
+
+```yaml
+machine_a:
+  switch_entity: switch.machine_a
+  input_entity: binary_sensor.machine_a
+  frech_number: 1
+machine_b:
+  switch_entity: switch.machine_b
+  input_entity: binary_sensor.machine_b
+  frech_number: 2
+```
+
+Le blueprint appelle directement le script pour chaque machine sélectionnée et
+attend sa fin. Le script existant conserve ses vérifications d'entrée, sa seconde
+tentative et ses notifications. Les valeurs initiales reprennent l'automatisation
+Frech examinée : **10 secondes d'attente dans le script**, puis **60 secondes de
+pause entre deux machines**. L'ordre est celui de la liste des appareils dans la
+carte. Les anciennes bascules `input_boolean` ne servent plus de sélection à ce
+nouveau parcours : la sélection appartient à chaque événement.
+
+L'heure choisie est le début de la séquence. Si plusieurs programmations arrivent
+en même temps, elles passent successivement dans la file ; les suivantes peuvent
+commencer plus tard. Un déclencheur déjà en retard de 90 secondes à son arrivée
+est ignoré ; une séquence légitimement mise en file est conservée. Une nouvelle
+exclusion, l'annulation ou la modification de l'événement interrompt les machines
+restantes lors de la relecture entre deux appels. Une machine déjà commandée
+termine son script. La fin d'un événement n'éteint pas les machines.
+
+Un catalogue incomplet, une sélection vide ou inconnue, un relais ou retour
+d'entrée indisponible, un script occupé ou une lecture calendrier en échec bloque
+le démarrage. Le mode test crée uniquement une notification listant les appareils
+et paramètres prévus. Il n'appelle pas le script.
+
+Les configurations propres à une installation restent locales et ne sont pas
+incluses dans le dépôt. Lors de la bascule, remplacer les anciens horaires actifs
+pour qu'ils ne déclenchent pas un démarrage en parallèle.
+
+### Activation d'un groupe fixe d'interrupteurs
+
 Le blueprint fourni permet l'activation d'un groupe d'appareils `switch` (prises,
 relais, éclairage, etc.). Il utilise exclusivement `switch.turn_on`. Pour d'autres
 types d'actions, une automatisation adaptée est nécessaire ; la carte seule
 n'exécute aucune commande.
 
+Ce parcours utilise une sélection fixe dans le blueprint. Il refuse désormais
+les événements portant une sélection `devices` : utiliser le blueprint Frech
+adapté pour la sélection par programmation. Une mise à jour de la carte seule ne
+met pas à jour les blueprints déjà importés dans Home Assistant.
+
 1. Ouvrir **Paramètres → Automatisations et scènes → Blueprints → Importer**.
 2. Importer :
 
-   `https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/v0.3.0/blueprints/planning.yaml`
+   `https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/v0.4.0/blueprints/planning.yaml`
 
 3. Choisir **le même calendrier** que dans la carte. Laisser **Filtre de groupe**
    vide si aucun groupe facultatif n’est configuré. Si vous utilisez des groupes,
@@ -216,7 +316,7 @@ planning, pour éviter qu'ils contournent les exclusions.
   vérifiées en lecture seule sur 2026.10.4.
 - Calendriers locaux permettant création, modification et suppression.
 - Un calendrier suffit ; de 0 à 8 groupes facultatifs. Configuration initiale vide.
-- Un horaire hebdomadaire par groupe ; pas de modification d'une seule occurrence
+- Plusieurs horaires hebdomadaires par groupe ; pas de modification d'une seule occurrence
   depuis la carte. Utiliser une programmation ponctuelle avec remplacement.
 - Relecture avant modification pour détecter un changement concurrent ; il ne
   s'agit pas d'un verrou transactionnel entre clients.
@@ -237,7 +337,7 @@ node scripts/build.mjs
 node --test test/*.test.mjs
 node --check dist/ha-planning-card.js
 python -m pip install -r test/requirements.txt
-python test/blueprint_test.py
+python -m unittest discover -s test -p '*blueprint_test.py'
 ```
 
 Essais navigateur facultatifs : installer Playwright 1.62.1 et Chromium, puis

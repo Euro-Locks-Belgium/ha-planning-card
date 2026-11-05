@@ -7,6 +7,16 @@ export function newEventId() {
   return `pc-${Array.from(values, n => n.toString(16).padStart(8, '0')).join('')}`;
 }
 export const DEFAULT_GROUPS = [];
+export const DEFAULT_COLOR = '#3689e6';
+export function eventColor(value) { return /^#[0-9a-f]{6}$/i.test(value || '') ? value.toLowerCase() : DEFAULT_COLOR; }
+export function colorText(value) {
+  const rgb = eventColor(value).slice(1).match(/../g).map(v => parseInt(v, 16) / 255).map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4);
+  return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722 > .179 ? '#111111' : '#ffffff';
+}
+export function replacesWeekly(restart, weekly) {
+  if (restart.meta?.replace_series) return restart.meta.replace_series === weekly.meta?.id;
+  return restart.meta?.replace === true || (!Array.isArray(restart.meta?.devices) && restart.start === weekly.start);
+}
 export function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
@@ -56,6 +66,7 @@ export function eventTime(value, zone) {
 export function metadata(description) {
   try {
     const value = JSON.parse(description || 'null');
+    if (value?.devices !== undefined && (!Array.isArray(value.devices) || value.devices.some(id => typeof id !== 'string' || !/^[a-z0-9_]+$/.test(id)))) return null;
     return value && !Array.isArray(value) && value.planning_chauffe === META_VERSION && ['weekly', 'restart', 'closure'].includes(value.kind) ? value : null;
   } catch { return null; }
 }
@@ -82,7 +93,7 @@ export function eventStatus(event, events, zone) {
   if (isClosed(events, event.start)) return 'closed';
   if (event.meta.kind === 'weekly') {
     const cycle = cycleDay(dayOf(event.start, zone));
-    const replaced = events.some(e => sameGroup(e, event) && e.meta?.kind === 'restart' && (e.meta.replace === true || e.start === event.start) && cycleDay(dayOf(e.start, zone)) === cycle);
+    const replaced = events.some(e => sameGroup(e, event) && e.meta?.kind === 'restart' && replacesWeekly(e, event) && cycleDay(dayOf(e.start, zone)) === cycle);
     if (replaced) return 'replaced';
   }
   return 'planned';
@@ -91,6 +102,10 @@ export function validateConfig(input) {
   const config = { title: 'Planning', demo: !input.calendar, calendar: '', ...input };
   if (config.title === 'Planning de chauffe') config.title = 'Planning';
   config.groups = (input.groups || DEFAULT_GROUPS).map(g => ({ name: String(g.name || '').trim(), calendar: g.calendar || '' }));
+  if (input.devices !== undefined && !Array.isArray(input.devices)) throw new Error('La liste des appareils est invalide.');
+  config.devices = (input.devices || []).map(d => ({ id: String(d.id || '').trim(), name: String(d.name || '').trim() }));
+  if (config.devices.some(d => !/^[a-z0-9_]+$/.test(d.id) || !d.name)) throw new Error('Chaque appareil doit avoir un nom et un identifiant (lettres minuscules, chiffres, _).');
+  if (new Set(config.devices.map(d => d.id)).size !== config.devices.length) throw new Error('Les identifiants des appareils doivent être distincts.');
   if (config.groups.length > 8) throw new Error('Configurez au maximum 8 groupes.');
   if (!config.demo) {
     const ids = (config.calendar ? [config.calendar] : [config.closure_calendar, ...config.groups.map(g => g.calendar)]).filter(Boolean);
@@ -115,12 +130,23 @@ export function validateDraft(draft, events, zone, now = Date.now(), demo = fals
   if (draft.kind === 'closure') return draft.summary?.trim() ? '' : 'Donnez un libellé à la période d’exclusion.';
   if (!demo && start < now + MIN_LEAD_MINUTES * 60000) return `Programmez le démarrage au moins ${MIN_LEAD_MINUTES} minutes à l’avance.`;
   if (isClosed(events, draft.start) && draft.kind === 'restart') return 'Cette programmation se trouve pendant une exclusion. Modifiez la date ou l’exclusion.';
-  if (events.some(e => sameGroup(e, draft) && e.uid !== draft.uid && e.meta?.kind === 'restart' && e.start === draft.start && draft.kind === 'restart')) return 'Une programmation existe déjà pour ce groupe à cette heure.';
-  if (draft.kind === 'weekly' && events.some(e => sameGroup(e, draft) && e.uid !== draft.uid && e.meta?.kind === 'weekly')) return 'Ce groupe possède déjà un horaire habituel. Modifiez cet horaire.';
+  if (draft.color && !/^#[0-9a-f]{6}$/i.test(draft.color)) return 'Choisissez une couleur valide.';
+  if (draft.devices !== undefined && (!Array.isArray(draft.devices) || !draft.devices.length || draft.devices.some(id => typeof id !== 'string' || !/^[a-z0-9_]+$/.test(id)) || new Set(draft.devices).size !== draft.devices.length)) return 'Sélectionnez au moins un appareil valide.';
+  const conflict = events.some(e => {
+    if (e.uid === draft.uid || e.calendar !== draft.calendar || !e.meta || !['weekly', 'restart'].includes(e.meta.kind)) return false;
+    const draftMeta = { id: draft.event_id, replace_series: draft.replace_series, replace: draft.replace, devices: draft.devices };
+    if (sameGroup(e, draft) && (draft.kind === 'restart' && e.meta.kind === 'weekly' && replacesWeekly({start:draft.start, meta:draftMeta}, e)
+        || draft.kind === 'weekly' && e.meta.kind === 'restart' && replacesWeekly(e, {start:draft.start, meta:draftMeta}))) return false;
+    const sameSlot = draft.kind === 'weekly' && e.meta.kind === 'weekly'
+      ? weekday(dayOf(e.start, zone)) === weekday(dayOf(draft.start, zone)) && localMinute(e.start, zone).slice(11) === localMinute(draft.start, zone).slice(11)
+      : e.start === draft.start;
+    return sameSlot && (Array.isArray(draft.devices) && Array.isArray(e.meta.devices) ? draft.devices.some(id => e.meta.devices.includes(id)) : sameGroup(e, draft));
+  });
+  if (conflict) return 'Une programmation existe déjà à cette heure pour ces appareils ou ce groupe.';
   return '';
 }
 export function calendarPayload(draft) {
-  const event = { dtstart: draft.start, dtend: draft.end, summary: draft.summary.trim(), description: JSON.stringify({ planning_chauffe: META_VERSION, kind: draft.kind, group: draft.kind === 'closure' ? undefined : draft.group, id: draft.event_id, replace: draft.kind === 'restart' && draft.replace === true, note: draft.note || '' }) };
+  const event = { dtstart: draft.start, dtend: draft.end, summary: draft.summary.trim(), description: JSON.stringify({ planning_chauffe: META_VERSION, kind: draft.kind, group: draft.kind === 'closure' ? undefined : draft.group, id: draft.event_id, color: draft.color ? eventColor(draft.color) : undefined, devices: draft.kind === 'closure' ? undefined : draft.devices, replace_series: draft.kind === 'restart' ? draft.replace_series || undefined : undefined, replace: draft.kind === 'restart' && draft.replace === true, note: draft.note || '' }) };
   if (draft.kind === 'weekly') event.rrule = draft.rrule;
   return { type: `calendar/event/${draft.uid ? 'update' : 'create'}`, entity_id: draft.calendar, ...(draft.uid ? { uid: draft.uid } : {}), event };
 }

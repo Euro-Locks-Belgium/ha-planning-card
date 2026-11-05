@@ -6,11 +6,13 @@ class PlanningChauffeEditor extends HTMLElement {
     this.shadowRoot.addEventListener('click', e => this._groups(e));
   }
   set hass(value) { this._hass = value; if (!this._rendered) this._render(); }
-  setConfig(value) { this._config = { demo: true, ...value, title: value.title === 'Planning de chauffe' ? 'Planning' : value.title, groups: (value.groups || DEFAULT_GROUPS).map(g => ({ name: g.name || '', calendar: g.calendar || '' })) }; this._render(); }
-  _emit() { this.dispatchEvent(new CustomEvent('config-changed', { bubbles: true, composed: true, detail: { config: { ...this._config, groups: this._config.groups.map(g => ({ ...g })) } } })); }
+  setConfig(value) { this._config = { demo: true, ...value, title: value.title === 'Planning de chauffe' ? 'Planning' : value.title, devices: (value.devices || []).map(d => ({...d})), groups: (value.groups || DEFAULT_GROUPS).map(g => ({ name: g.name || '', calendar: g.calendar || '' })) }; this._render(); }
+  _emit() { this.dispatchEvent(new CustomEvent('config-changed', { bubbles: true, composed: true, detail: { config: { ...this._config, devices: this._config.devices.map(d => ({ ...d })), groups: this._config.groups.map(g => ({ ...g })) } } })); }
   _groups(event) {
     const button = event.target.closest('button');
     if (!button || button.disabled) return;
+    if (button.dataset.action === 'add-device') { this._config.devices.push({ id: '', name: '' }); this._emit(); this._render(); return; }
+    if (button.dataset.removeDevice !== undefined) { this._config.devices.splice(Number(button.dataset.removeDevice), 1); this._emit(); this._render(); return; }
     if (button.dataset.action === 'add-group' && this._config.groups.length < 8) this._config.groups.push({ name: '', calendar: '' });
     else if (button.dataset.remove !== undefined) this._config.groups.splice(Number(button.dataset.remove), 1);
     else return;
@@ -20,7 +22,8 @@ class PlanningChauffeEditor extends HTMLElement {
     const el = event.target;
     if (!el.dataset.field) return;
     const value = el.type === 'checkbox' ? el.checked : el.value;
-    if (el.dataset.group !== undefined) this._config.groups[Number(el.dataset.group)][el.dataset.field] = value;
+    if (el.dataset.device !== undefined) this._config.devices[Number(el.dataset.device)][el.dataset.field] = value;
+    else if (el.dataset.group !== undefined) this._config.groups[Number(el.dataset.group)][el.dataset.field] = value;
     else this._config[el.dataset.field] = value;
     if (el.dataset.field === 'calendar' && el.dataset.group === undefined && value) this._config.demo = false;
     this._emit();
@@ -38,6 +41,10 @@ class PlanningChauffeEditor extends HTMLElement {
       <p>Un seul calendrier contient les programmations et les exclusions. Aucun groupe n’est nécessaire pour commencer.</p>
       <label class="check"><input type="checkbox" data-field="demo" ${this._config.demo ? 'checked' : ''}>Mode local (sans enregistrement Home Assistant)</label>
       <p>Choisir un calendrier active le mode connecté. Le mode local permet de tester sans enregistrer d’événement.</p>
+      <details ${this._config.devices.length ? 'open' : ''}><summary>Appareils programmables</summary>
+      <p>Configuration initiale : mêmes identifiants que dans le catalogue du blueprint. Ensuite, chaque utilisateur coche les appareils dans ses programmations.</p>
+      ${this._config.devices.map((d, i) => `<fieldset><legend>Appareil ${i + 1}</legend><label>Nom affiché<input data-field="name" data-device="${i}" value="${esc(d.name)}"></label><label>Identifiant<input data-field="id" data-device="${i}" pattern="[a-z0-9_]+" value="${esc(d.id)}"></label><button type="button" data-remove-device="${i}">Retirer cet appareil</button></fieldset>`).join('')}
+      <button type="button" data-action="add-device">Ajouter un appareil</button></details>
       <details ${this._config.groups.length ? 'open' : ''}><summary>Groupes (facultatif)</summary>
       <p>Uniquement pour distinguer plusieurs ensembles d’appareils dans le même calendrier. Utiliser le même nom dans le filtre de groupe du blueprint.</p>
       ${legacy ? select('Ancien calendrier des exclusions', 'closure_calendar', this._config.closure_calendar) : ''}

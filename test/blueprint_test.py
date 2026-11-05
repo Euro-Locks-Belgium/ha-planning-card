@@ -5,6 +5,7 @@ No Home Assistant installation or credentials are used.
 """
 import ast
 import json
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 import unittest
@@ -19,6 +20,7 @@ class Loader(yaml.SafeLoader):
 Loader.add_constructor('!input', lambda loader, node: {'__input__': loader.construct_scalar(node)})
 BLUEPRINT = yaml.load((Path(__file__).parents[1] / 'blueprints/planning-chauffe.yaml').read_text(encoding='utf-8'), Loader=Loader)
 SINGLE_BLUEPRINT = yaml.load((Path(__file__).parents[1] / 'blueprints/planning.yaml').read_text(encoding='utf-8'), Loader=Loader)
+FRECH_BLUEPRINT = yaml.load((Path(__file__).parents[1] / 'blueprints/planning-frech.yaml').read_text(encoding='utf-8'), Loader=Loader)
 
 def dt(value):
     if isinstance(value, datetime):
@@ -44,6 +46,7 @@ class Runner:
         self.env.filters['from_json'] = self.from_json
         self.env.tests['has_value'] = lambda value: self.states.get(value) not in (None, 'unknown', 'unavailable')
         self.env.tests['is_state'] = lambda entity, value: self.states.get(entity) == value
+        self.env.tests['match'] = lambda value, pattern: bool(re.match(pattern, str(value)))
         self.env.globals.update(now=lambda: self.now, states=lambda entity: self.states.get(entity, 'unknown'), state_attr=lambda entity, attr: 'Mon planning' if attr == 'friendly_name' else None, as_datetime=dt, as_local=lambda value: dt(value).astimezone(ZONE), as_timestamp=self.timestamp, timedelta=timedelta)
         self.context = {'trigger': {'platform': 'calendar', 'calendar_event': {'start': start, 'description': json.dumps({'planning_chauffe': 1, 'kind': kind, **({'group': group} if shared else {})})}}}
         self.events['calendar.group'].append({'start': start, 'end': (dt(start) + timedelta(minutes=5)).isoformat(), 'description': self.context['trigger']['calendar_event']['description']})
@@ -98,8 +101,18 @@ class Runner:
                 raise StopRun()
             elif 'wait_template' in step:
                 self.context['wait'] = {'completed': bool(self.render(step['wait_template']))}
+            elif 'repeat' in step:
+                items = self.render(step['repeat']['for_each'])
+                for index, item in enumerate(items):
+                    self.context['repeat'] = dict(item=item, index=index + 1, first=index == 0, last=index == len(items) - 1)
+                    self.sequence(step['repeat']['sequence'])
+            elif 'if' in step:
+                checks = step['if'] if isinstance(step['if'], list) else [step['if']]
+                self.sequence(step.get('then' if all(self.condition(c) for c in checks) else 'else', []))
+            elif 'delay' in step:
+                self.now += timedelta(**self.render(step['delay']))
             elif 'action' in step:
-                service = step['action']
+                service = self.render(step['action'])
                 data = self.render(step.get('data', {}))
                 target = self.render(step.get('target', {}))
                 self.calls.append((service, data, target))
@@ -112,6 +125,12 @@ class Runner:
                 elif service == 'switch.turn_on':
                     for entity in target['entity_id']:
                         self.states[entity] = 'on'
+                elif service.startswith('script.'):
+                    # The real script stays on HA. Mock its blocking duration,
+                    # and optionally inject an external change between machines.
+                    self.now += timedelta(seconds=data['wait_time'])
+                    if getattr(self, 'after_script', None):
+                        self.after_script(self)
     def run(self):
         for k, v in self.blueprint['variables'].items():
             self.context[k] = self.render(v)
@@ -262,6 +281,24 @@ class SingleCalendarTests(unittest.TestCase):
             r = Runner(shared=True, test=False, group=group)
             r.closure('2026-11-23', '2026-11-24')
             self.assertEqual(r.run(), [])
+    def test_fixed_target_blueprints_refuse_per_event_device_selections(self):
+        for shared in (False, True):
+            r = Runner(shared=shared, test=False)
+            description = json.dumps({'planning_chauffe': 1, 'kind': 'restart', 'devices': ['machine_a']})
+            r.context['trigger']['calendar_event']['description'] = description
+            r.events['calendar.group'][0]['description'] = description
+            self.assertEqual(r.run(), [])
+    def test_targeted_replacement_in_fixed_target_blueprints(self):
+        for shared in (False, True):
+            for series_id, expected in [('weekly-one', 0), ('other-weekly', 1)]:
+                r = Runner(shared=shared, kind='weekly', test=False)
+                original = json.loads(r.context['trigger']['calendar_event']['description'])
+                original['id'] = 'weekly-one'
+                r.context['trigger']['calendar_event']['description'] = json.dumps(original)
+                r.events['calendar.group'][0]['description'] = json.dumps(original)
+                r.restart(replace=False)
+                r.events['calendar.group'][-1]['description'] = json.dumps(dict(planning_chauffe=1, kind='restart', replace_series=series_id))
+                self.assertEqual(len(r.run()), expected)
     def test_failures_stale_event_and_late_trigger_still_block(self):
         for failure in ('broken_response', 'fail_service'):
             r = Runner(shared=True, test=False)

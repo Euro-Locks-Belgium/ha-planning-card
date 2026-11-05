@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0 — 2026-11-05
+
+- Menus heures/minutes avec pas de 10 minutes ; anciennes minutes conservées lors d'une modification.
+- Couleur et libellé par programmation et par série.
+- Plusieurs horaires hebdomadaires par calendrier/groupe, ajout toujours accessible.
+- Catalogue d'appareils vide par défaut ; sélection indépendante par événement.
+- Remplacement d'une série précise pour une semaine, sans remplacer les autres horaires.
+- Nouveau blueprint Frech : appelle le script existant avec les seuls paramètres du catalogue local.
+- Séquence en file, attente de 10 s et pause de 60 s par défaut, mode test sans appel de script.
+- Relecture du calendrier entre machines ; arrêt des machines restantes en cas de changement ou d'exclusion.
+- Les blueprints à groupe fixe refusent les événements portant une sélection d'appareils.
+- Blueprints à importer séparément ; configuration des associations techniques dans leur catalogue.
+- Éditeur de noms/identifiants d’appareils ; écran technique centralisé non inclus.
+- 22 tests de logique, 42 scénarios de blueprint et essais navigateur avec services simulés.
+
 ## 0.3.0 — 2026-11-05
 
 - Un seul calendrier pour les programmations et les exclusions.

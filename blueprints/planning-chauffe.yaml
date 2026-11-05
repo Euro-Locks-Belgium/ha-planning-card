@@ -81,6 +81,7 @@ actions:
     value_template: >-
       {{ event_meta is mapping and event_meta.get('planning_chauffe') == 1
          and event_meta.get('kind') in ['weekly', 'restart']
+         and 'devices' not in event_meta
          and 0 <= as_timestamp(now()) - (event_ts | float) < 90 }}
   - action: calendar.get_events
     target:
@@ -152,8 +153,9 @@ actions:
             {%- set meta = item.description | default('', true) | from_json({}) -%}
             {%- if meta is mapping and meta.get('planning_chauffe') == 1
                   and meta.get('kind') == 'restart'
-                  and (meta.get('replace') == true
-                       or as_timestamp(item.start, 0) == (event_ts | float))
+                  and ((meta.get('replace_series') and meta.get('replace_series') == event_meta.get('id'))
+                       or (not meta.get('replace_series') and (meta.get('replace') == true
+                         or ('devices' not in meta and as_timestamp(item.start, 0) == (event_ts | float)))))
                   and as_timestamp(cycle_start) <= as_timestamp(item.start, 0)
                     < as_timestamp(as_datetime(cycle_start) + timedelta(days=7)) -%}
               {%- set ns.replaced = true -%}

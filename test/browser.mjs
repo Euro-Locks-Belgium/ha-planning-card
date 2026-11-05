@@ -27,6 +27,7 @@ const card = page.locator('ha-planning-card');
 const button = label => card.getByRole('button', { name: label, exact: true });
 const start = toInstant(`${shiftDay(dayOf(Date.now(), 'Europe/Brussels'), 5)}T06:00`, 'Europe/Brussels');
 const day = dayOf(start, 'Europe/Brussels');
+const setTime = async value => { const [h,m] = value.split(':'); await card.locator('select[name=hour]').selectOption(h); await card.locator('select[name=minute]').selectOption(m); };
 const confirm = () => button('Confirmer dans Home Assistant').click();
 try {
   await mount(true, true);
@@ -50,12 +51,22 @@ try {
   });
   const editor = page.locator('ha-planning-card-editor');
   assert.equal(await editor.locator('fieldset').count(), 0);
-  await editor.locator('details').evaluate(e => { e.open = true; });
+  await editor.locator('details').last().evaluate(e => { e.open = true; });
   await editor.getByRole('button', { name: 'Ajouter un groupe', exact: true }).click();
   assert.equal(await editor.locator('[data-field="name"]').inputValue(), '');
   assert.deepEqual(await page.evaluate(() => editorConfig.groups), [{ name: '', calendar: '' }]);
   await editor.getByRole('button', { name: 'Retirer ce groupe', exact: true }).click();
   assert.deepEqual(await page.evaluate(() => editorConfig.groups), []);
+  await editor.locator('details').first().evaluate(e => { e.open = true; });
+  await editor.getByRole('button', {name:'Ajouter un appareil',exact:true}).click();
+  assert.equal(await editor.locator('[data-device="0"][data-field="id"]').inputValue(), '');
+  await editor.locator('[data-device="0"][data-field="name"]').fill('Machine A');
+  await editor.locator('[data-device="0"][data-field="name"]').dispatchEvent('change');
+  await editor.locator('[data-device="0"][data-field="id"]').fill('machine_a');
+  await editor.locator('[data-device="0"][data-field="id"]').dispatchEvent('change');
+  assert.deepEqual(await page.evaluate(() => editorConfig.devices), [{id:'machine_a',name:'Machine A'}]);
+  await editor.getByRole('button', {name:'Retirer cet appareil',exact:true}).click();
+  assert.deepEqual(await page.evaluate(() => editorConfig.devices), []);
   await editor.locator('select[data-field="calendar"]').first().selectOption('calendar.test_a');
   assert.equal(await page.evaluate(() => editorConfig.demo), false);
   assert.equal(await page.evaluate(() => editorConfig.calendar), 'calendar.test_a');
@@ -73,7 +84,7 @@ try {
   await button('Ajouter une programmation').click();
   assert.equal(await card.locator('select[name="group"]').count(), 0);
   await card.locator('input[name="date"]').fill(day);
-  await card.locator('input[name="time"]').fill('06:00');
+  await setTime('06:00');
   await button('Vérifier la programmation').click(); await confirm();
   await page.waitForFunction(() => testPlanning.ws.length === 1 && !testPlanning.card._busy);
   assert.equal(await page.evaluate(() => testPlanning.ws[0].entity_id), 'calendar.test_a');
@@ -91,7 +102,7 @@ try {
   assert.match(await card.locator('.ha-launch').innerText(), /Bloqué par exclusion/);
   await button('Ajouter une programmation').click();
   await card.locator('input[name="date"]').fill(day);
-  await card.locator('input[name="time"]').fill('08:00');
+  await setTime('08:00');
   await button('Vérifier la programmation').click();
   assert.match(await card.locator('.ha-editor .ha-error').innerText(), /exclusion/);
   assert.equal(await page.evaluate(() => testPlanning.ws.length), 2);
@@ -105,7 +116,7 @@ try {
   await card.getByRole('button', { name: 'Ajouter un horaire', exact: true }).click();
   assert.equal(await card.locator('select[name="group"]').count(), 0);
   await card.locator('select[name="day"]').selectOption('1');
-  await card.locator('input[name="time"]').fill('01:00');
+  await setTime('01:00');
   await button('Vérifier la programmation').click(); await confirm();
   await page.waitForFunction(() => testPlanning.ws.length === 4 && !testPlanning.card._busy);
   assert.equal(await page.evaluate(() => testPlanning.ws[3].entity_id), 'calendar.test_a');
@@ -117,23 +128,112 @@ try {
     await button('Ajouter une programmation').click();
     await card.locator('select[name="group"]').selectOption(index);
     await card.locator('input[name="date"]').fill(day);
-    await card.locator('input[name="time"]').fill('06:00');
+    await setTime('06:00');
     await button('Vérifier la programmation').click(); await confirm();
     await page.waitForFunction(() => !testPlanning.card._busy && !testPlanning.card._editor);
   }
   assert.deepEqual(await page.evaluate(() => testPlanning.ws.map(w => JSON.parse(w.event.description).group)), ['Groupe B', 'Groupe A']);
   assert.equal(await card.locator('.ha-launch').count(), 2);
+  // Device selections, custom colors and several independent weekly series.
+  await mount(false, false, 'single');
+  await page.evaluate(() => {
+    testPlanning.card.setConfig({...testPlanning.card._config, devices:[{id:'frech_1',name:'Frech 1'},{id:'frech_3',name:'Frech 3'},{id:'frech_20',name:'Frech 20'}]});
+  });
+  await page.waitForFunction(() => testPlanning.card._loaded);
+  const programs = [
+    {name:'Matin',day:'1',time:'06:20',devices:['frech_1','frech_3'],color:'#247ac7'},
+    {name:'Grand bain',day:'1',time:'08:40',devices:['frech_20'],color:'#9b5de5'},
+    {name:'Mardi',day:'2',time:'06:10',devices:['frech_1'],color:'#e78826'},
+  ];
+  for (const [index, program] of programs.entries()) {
+    await card.getByRole('tab', {name:'Horaires habituels'}).click();
+    await button('Ajouter un horaire').click();
+    assert.deepEqual(await card.locator('select[name="minute"] option').evaluateAll(options => options.map(o => o.value)), ['', '00','10','20','30','40','50']);
+    assert.equal(await card.locator('select[name="hour"] option').count(), 25);
+    await card.locator('input[name="summary"]').fill(program.name);
+    await card.locator('select[name="day"]').selectOption(program.day);
+    await setTime(program.time);
+    assert.ok((await card.locator('select[name="hour"]').boundingBox()).width >= 80);
+    assert.ok((await card.locator('select[name="minute"]').boundingBox()).width >= 80);
+    await card.locator('input[name="color"]').fill(program.color);
+    if (index === 0) {
+      await button('Vérifier la programmation').click();
+      assert.match(await card.locator('.ha-editor .ha-error').innerText(), /au moins un appareil/);
+      assert.equal(await page.evaluate(() => testPlanning.ws.length), 0);
+    }
+    for (const id of program.devices) await card.locator(`input[name="device"][value="${id}"]`).check();
+    await button('Vérifier la programmation').click();
+    assert.match(await card.locator('.ha-summary').innerText(), /Frech/);
+    await confirm();
+    await page.waitForFunction(count => testPlanning.ws.length === count && !testPlanning.card._busy, index + 1);
+  }
+  await card.getByRole('tab', {name:'Horaires habituels'}).click();
+  assert.equal(await card.locator('.ha-weeklyrow').count(), 3);
+  assert.equal(await button('Ajouter un horaire').isEnabled(), true);
+  for (const [index, program] of programs.entries()) {
+    const meta = await page.evaluate(i => JSON.parse(testPlanning.ws[i].event.description), index);
+    assert.deepEqual(meta.devices, program.devices);
+    assert.equal(meta.color, program.color);
+  }
+  await card.screenshot({path:fileURLToPath(new URL('test-results/multiple-weekly.png', root))});
+  await card.locator('.ha-weeklyrow').filter({hasText:'Grand bain'}).getByRole('button', {name:'Modifier la série'}).click();
+  assert.equal(await card.locator('input[name="device"][value="frech_20"]').isChecked(), true);
+  assert.equal(await card.locator('input[name="color"]').inputValue(), '#9b5de5');
+  await card.locator('input[name="color"]').fill('#23b093');
+  await setTime('09:20');
+  await button('Vérifier la programmation').click(); await confirm();
+  await page.waitForFunction(() => testPlanning.ws.length === 4 && !testPlanning.card._busy);
+  await button('Ajouter une programmation').click();
+  await card.locator('input[name="summary"]').fill('Reprise après arrêt');
+  await card.locator('input[name="date"]').fill(shiftDay(day, 1));
+  await setTime('05:20');
+  await card.locator('input[name="device"][value="frech_1"]').check();
+  const seriesId = await page.evaluate(() => JSON.parse(testPlanning.ws[0].event.description).id);
+  await card.locator('select[name="replace_series"]').selectOption(seriesId);
+  await card.locator('input[name="color"]').fill('#d653a2');
+  await card.screenshot({path:fileURLToPath(new URL('test-results/program-devices.png', root))});
+  await button('Vérifier la programmation').click(); await confirm();
+  await page.waitForFunction(() => testPlanning.ws.length === 5 && !testPlanning.card._busy);
+  const restartMeta = await page.evaluate(() => JSON.parse(testPlanning.ws[4].event.description));
+  assert.equal(restartMeta.replace_series, seriesId);
+  assert.equal(restartMeta.replace, false);
+  assert.equal(await card.locator('.ha-day.selected .ha-dayevent').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(214, 83, 162)');
+  // Deleting a weekly series leaves the two other series and the one-off intact.
+  await card.getByRole('tab', {name:'Horaires habituels'}).click();
+  await card.locator('.ha-weeklyrow').filter({hasText:'Grand bain'}).getByRole('button', {name:'Supprimer',exact:true}).click();
+  await confirm();
+  await page.waitForFunction(() => testPlanning.ws.length === 6 && !testPlanning.card._busy);
+  await card.getByRole('tab', {name:'Horaires habituels'}).click();
+  assert.equal(await card.locator('.ha-weeklyrow').count(), 2);
+  assert.equal(await page.evaluate(() => testPlanning.rows['calendar.test_a'].length), 3);
+  assert.equal(await page.evaluate(() => testPlanning.ws.every(r => r.type.startsWith('calendar/event/'))), true);
+  // A full machine list remains usable in a narrow HA card on a desktop.
+  await page.evaluate(() => testPlanning.card.setConfig({...testPlanning.card._config, devices:[1,2,3,4,5,6,7,10,11,12,13,14,15,16,17,19,20,21].map(n => ({id:`frech_${n}`,name:`Frech ${n}`}))}));
+  await page.waitForFunction(() => testPlanning.card._loaded);
+  await button('Ajouter une programmation').click();
+  await page.setViewportSize({width:1440,height:1200});
+  await card.evaluate(el => {el.style.width='380px';});
+  assert.equal(await card.locator('input[name="device"]').count(), 18);
+  assert.ok((await card.locator('select[name="minute"]').boundingBox()).width >= 80);
+  assert.equal(await card.evaluate(el => el.shadowRoot.querySelector('ha-card').scrollWidth <= el.clientWidth + 1), true);
+  await card.locator('input[name="device"][value="frech_21"]').check();
+  assert.equal(await card.locator('input[name="device"][value="frech_21"]').isChecked(), true);
+  await button('Vérifier la programmation').scrollIntoViewIfNeeded();
+  assert.equal(await button('Vérifier la programmation').isVisible(), true);
+  await card.screenshot({path:fileURLToPath(new URL('test-results/devices-narrow.png', root))});
+  await card.evaluate(el => {el.style.width='';});
+  await page.setViewportSize({width:1100,height:1200});
   await mount(true);
   // Local HTTP Home Assistant can lack randomUUID; getRandomValues still works.
   await page.evaluate(() => { window.crypto.randomUUID = undefined; });
   assert.equal(await page.evaluate(() => testPlanning.reads.length + testPlanning.ws.length), 0);
   await button('Ajouter une programmation').click();
   assert.equal(await card.locator('input[name="date"]').inputValue(), '');
-  assert.equal(await card.locator('input[name="time"]').inputValue(), '');
+  assert.equal(await card.locator('select[name="hour"]').inputValue(), '');
   assert.equal(await card.locator('select[name="group"]').inputValue(), '');
   await card.locator('select[name="group"]').selectOption('0');
   await card.locator('input[name="date"]').fill(day);
-  await card.locator('input[name="time"]').fill('06:00');
+  await setTime('06:00');
   await button('Vérifier la programmation').click();
   await button('Confirmer en mode local').click();
   assert.equal(await page.evaluate(() => testPlanning.reads.length + testPlanning.ws.length), 0);
@@ -141,7 +241,7 @@ try {
   await button('Ajouter une programmation').click();
   await card.locator('select[name="group"]').selectOption('0');
   await card.locator('input[name="date"]').fill(day);
-  await card.locator('input[name="time"]').fill('06:00');
+  await setTime('06:00');
   await button('Vérifier la programmation').click(); await confirm();
   await page.waitForFunction(() => testPlanning.ws.length === 1 && !testPlanning.card._busy);
   const created = await page.evaluate(() => testPlanning.ws[0]);
@@ -149,8 +249,17 @@ try {
   assert.equal(created.type, 'calendar/event/create');
   assert.equal(created.entity_id, 'calendar.test_a');
   assert.match(await card.locator('.ha-sidebar').innerText(), /06:00/);
+  // Preserve an existing off-grid minute when opening an old event.
+  await page.evaluate(() => {
+    const row = testPlanning.rows['calendar.test_a'][0];
+    row.start = new Date(Date.parse(row.start) + 15 * 60000).toISOString();
+    row.end = new Date(Date.parse(row.end) + 15 * 60000).toISOString();
+  });
+  await card.getByRole('button', {name:'Actualiser',exact:true}).click();
   await card.locator('[data-edit]').first().click();
-  await card.locator('input[name="time"]').fill('07:15');
+  assert.equal(await card.locator('select[name="minute"]').inputValue(), '15');
+  assert.match(await card.locator('select[name="minute"] option:checked').innerText(), /valeur existante/);
+  await setTime('07:10');
   await button('Vérifier la programmation').click(); await confirm();
   await page.waitForFunction(() => testPlanning.ws.length === 2 && !testPlanning.card._busy);
   assert.equal(await page.evaluate(() => testPlanning.ws[1].type), 'calendar/event/update');
@@ -166,7 +275,7 @@ try {
   await button('Ajouter une programmation').click();
   await card.locator('select[name="group"]').selectOption('0');
   await card.locator('input[name="date"]').fill(day);
-  await card.locator('input[name="time"]').fill('06:00');
+  await setTime('06:00');
   await button('Vérifier la programmation').click();
   assert.match(await card.locator('.ha-editor .ha-error').innerText(), /exclusion/);
   assert.equal(await page.evaluate(() => testPlanning.ws.length), 4);
@@ -182,7 +291,7 @@ try {
   await button('Ajouter une programmation').click();
   await card.locator('select[name="group"]').selectOption('0');
   await card.locator('input[name="date"]').fill(shiftDay(day, 2));
-  await card.locator('input[name="time"]').fill('06:00');
+  await setTime('06:00');
   await button('Vérifier la programmation').click();
   await page.evaluate(() => testPlanning.loseNextReply());
   await confirm();
@@ -193,7 +302,7 @@ try {
   assert.equal(await page.evaluate(() => testPlanning.ws.length), 5);
   // Another user edits the event while this form is open: do not overwrite it.
   await card.locator('[data-edit]').first().click();
-  await card.locator('input[name="time"]').fill('08:00');
+  await setTime('08:00');
   await button('Vérifier la programmation').click();
   await page.evaluate(() => { testPlanning.rows['calendar.test_a'][0].summary = 'Modification concurrente'; });
   await confirm(); await page.waitForFunction(() => !testPlanning.card._busy);
@@ -208,13 +317,13 @@ try {
   await card.getByRole('tab', { name: 'Horaires habituels' }).click();
   await card.getByRole('button', { name: 'Ajouter un horaire', exact: true }).first().click();
   await card.locator('select[name="day"]').selectOption('1');
-  await card.locator('input[name="time"]').fill('01:00');
+  await setTime('01:00');
   await button('Vérifier la programmation').click(); await confirm();
   await page.waitForFunction(() => testPlanning.ws.length === 6 && !testPlanning.card._busy);
   assert.equal(await page.evaluate(() => testPlanning.ws[5].event.rrule), 'FREQ=WEEKLY;BYDAY=MO');
   await card.getByRole('tab', { name: 'Horaires habituels' }).click();
   await card.getByRole('button', { name: 'Modifier la série', exact: true }).first().click();
-  await card.locator('input[name="time"]').fill('02:30');
+  await setTime('02:30');
   await button('Vérifier la programmation').click(); await confirm();
   await page.waitForFunction(() => testPlanning.ws.length === 7 && !testPlanning.card._busy);
   assert.equal(await page.evaluate(() => testPlanning.ws[6].type), 'calendar/event/update');
@@ -227,7 +336,7 @@ try {
   await button('Ajouter une programmation').click();
   await card.locator('select[name="group"]').selectOption('0');
   await card.locator('input[name="date"]').fill(shiftDay(day, 4));
-  await card.locator('input[name="time"]').fill('06:00');
+  await setTime('06:00');
   await button('Vérifier la programmation').click();
   await page.evaluate(() => testPlanning.failWrites(true));
   await confirm(); await page.waitForFunction(() => !testPlanning.card._busy);
@@ -255,5 +364,5 @@ try {
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= 320), true);
   await card.screenshot({ path: fileURLToPath(new URL('test-results/mobile.png', root)) });
   assert.deepEqual(errors, []);
-  console.log('Browser checks passed: single-calendar/no-group CRUD and weekly schedule, shared-group isolation, empty start, editor, legacy mode, timezone, exclusions, failures, concurrent edit, retry deduplication and HA resizing.');
+  console.log('Browser checks passed: multiple weekly series, per-event colors/devices, targeted replacement, single-calendar CRUD, shared groups, empty start, editor, legacy mode, timezone, exclusions, failures, concurrent edit, retry deduplication and HA resizing.');
 } finally { await browser.close(); }

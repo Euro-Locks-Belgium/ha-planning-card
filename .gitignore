@@ -13,3 +13,6 @@ playwright-report/
 coverage/
 *.log
 .DS_Store
+
+# Site-specific Home Assistant configuration (never publish)
+local/

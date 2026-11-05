@@ -44,6 +44,7 @@ test('reprise additive et doublon exact', () => {
   const r = event('restart', '2026-11-23T03:00:00Z', '2026-11-23T03:05:00Z', { replace: false });
   assert.equal(M.eventStatus(w, [w, r], zone), 'planned');
   assert.equal(M.eventStatus(w, [w, { ...r, start: w.start }], zone), 'replaced');
+  assert.equal(M.validateDraft({...base(),start:w.start,end:w.end,replace:true}, [w], zone, now), '');
 });
 test('délai minimum, doublons, modifications du même uid', () => {
   assert.match(M.validateDraft({ ...base(), start: '2026-11-05T10:19:00Z', end: '2026-11-05T10:24:00Z' }, [], zone, now), /20 minutes/);
@@ -51,10 +52,42 @@ test('délai minimum, doublons, modifications du même uid', () => {
   assert.match(M.validateDraft(base(), [r], zone, now), /déjà/);
   assert.equal(M.validateDraft({ ...base(), uid: 'restart' }, [r], zone, now), '');
 });
-test('un seul horaire hebdomadaire par groupe', () => {
+test('plusieurs horaires hebdomadaires par groupe ; doublon de créneau refusé', () => {
   const w = event('weekly', base().start, base().end);
   assert.match(M.validateDraft(base('weekly'), [w], zone, now), /déjà/);
   assert.equal(M.validateDraft({ ...base('weekly'), uid: 'weekly' }, [w], zone, now), '');
+  assert.equal(M.validateDraft({ ...base('weekly'), start: '2026-11-24T01:00:00Z', end: '2026-11-24T01:05:00Z' }, [w], zone, now), '');
+});
+
+test('couleur et sélection des appareils conservées dans le calendrier', () => {
+  const d = {...base(), devices:['frech_1','frech_3'], color:'#12abef', replace_series:'weekly-1'};
+  const meta = JSON.parse(M.calendarPayload(d).event.description);
+  assert.deepEqual(meta.devices, d.devices);
+  assert.equal(meta.color, d.color);
+  assert.equal(meta.replace_series, 'weekly-1');
+  assert.equal(M.eventColor('red;display:none'), M.DEFAULT_COLOR);
+  assert.equal(M.colorText('#ffffff'), '#111111');
+  assert.equal(M.colorText('#000000'), '#ffffff');
+  assert.match(M.validateDraft({...d, devices:[]}, [], zone, now), /appareil/);
+  assert.match(M.validateDraft({...d, devices:['frech_1','frech_1']}, [], zone, now), /appareil/);
+  assert.equal(M.metadata(JSON.stringify({planning_chauffe:1,kind:'restart',devices:'frech_1'})), null);
+});
+
+test('même créneau possible avec des appareils distincts ; remplacement ciblé', () => {
+  const w = event('weekly', base().start, base().end, {id:'weekly-1',devices:['frech_1']});
+  const w2 = {...w, uid:'weekly2', meta:{...w.meta,id:'weekly-2',devices:['frech_2']}};
+  assert.equal(M.validateDraft({...base('weekly'),devices:['frech_2']}, [w], zone, now), '');
+  assert.match(M.validateDraft({...base('weekly'),devices:['frech_1']}, [w], zone, now), /déjà/);
+  const r = event('restart', base().start, base().end, {devices:['frech_1'],replace_series:'weekly-1'});
+  assert.equal(M.eventStatus(w, [w,w2,r], zone), 'replaced');
+  assert.equal(M.eventStatus(w2, [w,w2,r], zone), 'planned');
+  assert.equal(M.eventStatus(w, [w,{...r,meta:{...r.meta,replace_series:undefined}}], zone), 'planned');
+});
+
+test('catalogue vide par défaut et identifiants uniques', () => {
+  assert.deepEqual(M.validateConfig({}).devices, []);
+  assert.throws(() => M.validateConfig({devices:[{id:'a',name:'A'},{id:'a',name:'B'}]}), /distincts/);
+  assert.throws(() => M.validateConfig({devices:[{id:'script.x',name:'A'}]}), /identifiant/);
 });
 test('configuration exige des calendriers distincts ; mode démo sans calendrier', () => {
   assert.equal(M.validateConfig({}).demo, true);
