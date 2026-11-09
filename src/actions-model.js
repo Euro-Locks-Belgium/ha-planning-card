@@ -58,12 +58,12 @@ export function normalizeSchedule(raw,calendar,zone) {
   const start=eventTime(raw.start,zone),end=eventTime(raw.end,zone);
   return {...raw,calendar,start,end,meta,legacy,role:meta?'schedule':legacy?.kind==='closure'?'legacy-closure':legacy?'legacy':'external',key:`${calendar}|${raw.uid || raw.summary}|${raw.recurrence_id || start}`};
 }
-export function recurring(event) {return !!(event.rrule || event.recurrence_id);}
+export function recurring(event) {return !!(event.rrule || event.recurrence_id || event.series_id);}
 export function sameOccurrence(a,b) {return a.calendar===b.calendar && a.uid===b.uid && (a.recurrence_id || '')===(b.recurrence_id || '');}
 export function occurrenceSelector(event,scope='occurrence') {
   if(!['occurrence','series'].includes(scope))throw new Error('Portée de modification invalide.');
   if(!event.uid) throw new Error('Cet événement ne possède pas d’identifiant modifiable.');
-  if(scope==='occurrence' && recurring(event)) {
+  if(scope==='occurrence' && (event.rrule || event.recurrence_id)) {
     if(typeof event.recurrence_id !== 'string' || !event.recurrence_id) throw new Error('Ce calendrier ne fournit pas l’identifiant de cette occurrence. La série n’a pas été modifiée.');
     return {uid:event.uid,recurrence_id:event.recurrence_id};
   }
@@ -71,17 +71,21 @@ export function occurrenceSelector(event,scope='occurrence') {
 }
 export function schedulePayload(draft) {
   const event={dtstart:draft.start,dtend:draft.end,summary:draft.summary.trim(),description:JSON.stringify({planning:2,kind:'schedule',id:draft.event_id || newEventId(),color:eventColor(draft.color),has_end:!!draft.has_end,start_actions:draft.start_actions,end_actions:draft.has_end?draft.end_actions:[],note:draft.note || ''})};
+  if(!draft.uid && draft.rrule)event.description=JSON.stringify({...JSON.parse(event.description),series_origin:{dtstart:draft.start,dtend:draft.end,rrule:draft.rrule}});
   if(draft.rrule && (!draft.uid || draft.scope==='series')) event.rrule=draft.rrule;
-  return {type:`calendar/event/${draft.uid?'update':'create'}`,entity_id:draft.calendar,...(draft.uid?occurrenceSelector(draft,draft.scope):{}),...(draft.uid && draft.scope==='series'?{recurrence_range:'THISANDFUTURE'}:{}),event};
+  if(draft.uid && draft.scope==='series')return preservingSeriesPayload(draft,event,draft.series_revision);
+  return {type:`calendar/event/${draft.uid?'update':'create'}`,entity_id:draft.calendar,...(draft.uid?occurrenceSelector(draft,draft.scope):{}),event};
 }
+export function preservingSeriesPayload(original,event,revision){if(!revision)throw new Error('La série doit être relue avant sa modification.');return {type:'planning-series-update',entity_id:original.calendar,...occurrenceSelector(original,'series'),expected_revision:revision,event};}
 export function occurrenceDeletePayload(event,scope='occurrence') {return {type:'calendar/event/delete',entity_id:event.calendar,...occurrenceSelector(event,scope)};}
 export function calendarEditPayload(original,changes,scope='occurrence'){
   const event={dtstart:changes.start,dtend:changes.end,summary:changes.summary ?? original.summary,description:changes.description ?? original.description ?? ''};
   if(typeof original.location==='string')event.location=original.location;
   if(scope==='series'){const rule=changes.rrule || original.rrule;if(!rule)throw new Error('Règle de répétition indisponible. Ouvrez une occurrence habituelle.');event.rrule=rule;}
-  return {type:'calendar/event/update',entity_id:original.calendar,...occurrenceSelector(original,scope),...(scope==='series'?{recurrence_range:'THISANDFUTURE'}:{}),event};
+  if(scope==='series')return preservingSeriesPayload(original,event,changes.series_revision);
+  return {type:'calendar/event/update',entity_id:original.calendar,...occurrenceSelector(original,scope),event};
 }
-export function seriesRule(event,events=[]){return event.rrule || events.find(e=>e.calendar===event.calendar && e.uid===event.uid && e.rrule)?.rrule || '';}
+export function seriesRule(event,events=[]){return event.series_rule || event.rrule || events.find(e=>e.calendar===event.calendar && e.uid===event.uid && e.rrule)?.rrule || '';}
 export function ruleDays(rule,fallback=1){const days=rule?.match(/(?:^|;)BYDAY=([^;]+)/i)?.[1];return days?days.split(',').map(value=>['SU','MO','TU','WE','TH','FR','SA'].indexOf(value.replace(/^[+-]?\d+/,''))).filter(value=>value>=0):[fallback];}
 export function editedWeeklyRule(rule,days){
   if(!/(?:^|;)FREQ=WEEKLY(?:;|$)/i.test(rule))return rule;

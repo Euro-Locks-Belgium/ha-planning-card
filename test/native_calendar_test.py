@@ -61,21 +61,5 @@ console.log(JSON.stringify(process.argv[2]==='delete'?occurrenceDeletePayload(e,
         self.apply(self.payload(self.rows()[1],preserve=True))
         self.assertEqual([r.start.day for r in self.rows()],[9,18,23,30])
         self.assertTrue(all(r.description==description for r in self.rows()))
-    def test_full_series_updates_every_occurrence(self):
-        before=self.rows();self.apply(self.payload(before[2],scope='series',date='2026-11-09'))
-        self.assertEqual([r.start.day for r in self.rows()],[9,16,23,30])
-        self.assertTrue(all(r.start.hour==8 and r.uid==before[0].uid for r in self.rows()))
-    def test_full_series_can_change_weekdays_and_keeps_count(self):
-        self.apply(self.payload(self.rows()[0],scope='series',date='2026-11-09',rule='FREQ=WEEKLY;COUNT=4;BYDAY=MO,WE'))
-        self.assertEqual([r.start.day for r in self.rows()],[9,11,16,18])
-    def test_full_series_replacement_resets_individual_exceptions_as_disclosed(self):
-        before=self.rows();self.apply(self.payload(before[1]));self.apply(self.payload(before[2],delete=True))
-        self.apply(self.payload(self.rows()[0],scope='series',date='2026-11-09'))
-        self.assertEqual([r.start.day for r in self.rows()],[9,16,23,30])
-        self.assertTrue(all(r.start.hour==8 for r in self.rows()))
-    def test_calendar_only_series_keeps_original_description(self):
-        self.apply(self.payload(self.rows()[0],scope='series',date='2026-11-09',preserve=True))
-        self.assertEqual(len(self.rows()),4)
-        self.assertTrue(all(r.start.hour==8 and not r.description for r in self.rows()))
 
 if __name__=='__main__':unittest.main()

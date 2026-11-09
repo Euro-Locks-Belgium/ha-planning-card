@@ -86,5 +86,9 @@ class ActionBlueprintTests(unittest.TestCase):
         r=ActionRunner(actions=[dict(target='frech',op='start')]);r.states['script.start']='on';self.assertEqual(r.commands(),[])
     def test_legacy_events_ignored_by_new_executor(self):
         r=ActionRunner();r.change_meta(lambda m:m.update(planning=1,planning_chauffe=1,kind='weekly'));self.assertEqual(r.commands(),[])
+    def test_incomplete_series_and_technical_journal_never_execute(self):
+        for meta in [dict(planning_series_pending='operation',slot='master'),dict(planning_series_pending='operation',slot='2026-11-23'),dict(planning_series_journal=1,id='family')]:
+            r=ActionRunner();r.context['trigger']['calendar_event']['description']=json.dumps(meta);r.events['calendar.group'][0]['description']=json.dumps(meta)
+            self.assertEqual(r.commands(),[])
 
 if __name__=='__main__':unittest.main()

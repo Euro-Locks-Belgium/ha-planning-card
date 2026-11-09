@@ -1,7 +1,7 @@
-/* Planning 0.8.0 | Euro-Locks Belgium */
+/* Planning 0.9.0 | Euro-Locks Belgium */
 (() => {
 'use strict';
-const VERSION = "0.8.0";
+const VERSION = "0.9.0";
 // French message IDs keep existing calendar data and model errors unchanged.
 const PLANNING_LANGUAGES={fr:'Français',en:'English',nl:'Nederlands',it:'Italiano'};
 function planningLanguage(setting='auto',hass={}){
@@ -12,7 +12,27 @@ function planningLanguage(setting='auto',hass={}){
 const PLANNING_LOCALES={fr:'fr-BE',en:'en-GB',nl:'nl-BE',it:'it-IT'};
 const PLANNING_MESSAGES=[
   ['Portée de la modification','Edit scope','Bereik van de wijziging','Ambito della modifica'],['Ce jour uniquement','This occurrence only','Alleen deze datum','Solo questa occorrenza'],['Date de début de la série','Series start date','Begindatum van de reeks','Data di inizio della serie'],['Enregistrer la série','Save series','Reeks opslaan','Salva serie'],
-  ['Toute la série sera reprogrammée à partir de la date choisie. Les jours déplacés ou supprimés individuellement seront réinitialisés.','The entire series will be rescheduled from the chosen date. Individually moved or deleted dates will be reset.','De hele reeks wordt opnieuw gepland vanaf de gekozen datum. Afzonderlijk verplaatste of verwijderde datums worden teruggezet.','L’intera serie verrà riprogrammata dalla data scelta. Le date spostate o eliminate singolarmente verranno reimpostate.'],
+  ['La série sera modifiée à partir de la date choisie. Les jours déjà déplacés ou supprimés sont conservés.','The series will be updated from the chosen date. Previously moved or deleted occurrences are preserved.','De reeks wordt gewijzigd vanaf de gekozen datum. Eerder verplaatste of verwijderde datums blijven behouden.','La serie verrà modificata dalla data scelta. Le occorrenze già spostate o eliminate vengono conservate.'],
+  ['Ancienne série : importez une fois le fichier ICS du calendrier pour reprendre aussi les jours déjà supprimés.','Existing series: import the calendar ICS file once to include previously deleted occurrences.','Bestaande reeks: importeer het ICS-bestand van de kalender eenmalig om eerder verwijderde datums over te nemen.','Serie esistente: importa una volta il file ICS del calendario per recuperare anche le occorrenze già eliminate.'],
+  ['Importer les exceptions existantes','Import existing exceptions','Bestaande uitzonderingen importeren','Importa le eccezioni esistenti'],
+  ['Importez une fois le fichier ICS pour conserver toutes les exceptions de cette ancienne série.','Import the ICS file once to preserve all exceptions in this existing series.','Importeer het ICS-bestand eenmalig om alle uitzonderingen van deze bestaande reeks te behouden.','Importa una volta il file ICS per conservare tutte le eccezioni di questa serie esistente.'],
+  ['Fichier ICS invalide ou trop volumineux.','Invalid or oversized ICS file.','Ongeldig of te groot ICS-bestand.','File ICS non valido o troppo grande.'],['Fichier ICS invalide.','Invalid ICS file.','Ongeldig ICS-bestand.','File ICS non valido.'],
+  ['Seules les séries avec une heure sont prises en charge dans cet import.','This import supports timed series only.','Deze import ondersteunt alleen reeksen met een tijdstip.','Questa importazione supporta solo serie con un orario.'],
+  ['Cette série ICS est absente, fractionnée ou incompatible.','This ICS series is missing, split or incompatible.','Deze ICS-reeks ontbreekt, is opgesplitst of is niet compatibel.','Questa serie ICS è assente, suddivisa o incompatibile.'],
+  ['La série ICS doit préciser son début et sa fin.','The ICS series must specify its start and end.','De ICS-reeks moet een begin en een einde bevatten.','La serie ICS deve specificare inizio e fine.'],
+  ['Le journal des exceptions est invalide. Aucune série modifiée.','The exception journal is invalid. No series was changed.','Het uitzonderingenlogboek is ongeldig. Er is geen reeks gewijzigd.','Il registro delle eccezioni non è valido. Nessuna serie modificata.'],
+  ['Plusieurs journaux correspondent à cette série. Aucune modification effectuée.','Multiple journals match this series. No changes were made.','Meerdere logboeken horen bij deze reeks. Er is niets gewijzigd.','Più registri corrispondono a questa serie. Nessuna modifica effettuata.'],
+  ['Le journal des exceptions n’a pas pu être enregistré.','The exception journal could not be saved.','Het uitzonderingenlogboek kon niet worden opgeslagen.','Impossibile salvare il registro delle eccezioni.'],
+  ['Une sauvegarde de série doit d’abord être reprise. Actualisez le calendrier.','A series save must be resumed first. Refresh the calendar.','Hervat eerst het opslaan van de reeks. Vernieuw de kalender.','Prima occorre riprendere il salvataggio della serie. Aggiorna il calendario.'],
+  ['Une exception commence bientôt. Réessayez après son exécution.','An exception starts soon. Try again after it runs.','Een uitzondering begint binnenkort. Probeer het na de uitvoering opnieuw.','Un’eccezione inizia a breve. Riprova dopo la sua esecuzione.'],
+  ['Le nouvel événement n’a pas pu être retrouvé. Actualisez pour reprendre la sauvegarde.','The new event could not be found. Refresh to resume saving.','De nieuwe gebeurtenis is niet gevonden. Vernieuw om het opslaan te hervatten.','Impossibile trovare il nuovo evento. Aggiorna per riprendere il salvataggio.'],
+  ['Opération de calendrier invalide.','Invalid calendar operation.','Ongeldige kalenderbewerking.','Operazione del calendario non valida.'],
+  ['Ce calendrier est incompatible avec la modification de série préservant les exceptions.','This calendar does not support series edits that preserve exceptions.','Deze kalender ondersteunt geen reekswijzigingen met behoud van uitzonderingen.','Questo calendario non supporta modifiche della serie che conservano le eccezioni.'],
+  ['Cette structure de série n’est pas prise en charge. Aucune modification effectuée.','This series structure is unsupported. No changes were made.','Deze reeksstructuur wordt niet ondersteund. Er is niets gewijzigd.','Questa struttura della serie non è supportata. Nessuna modifica effettuata.'],
+  ['La série ou une de ses exceptions a changé. Fermez puis rouvrez la programmation.','The series or one of its exceptions has changed. Close and reopen the schedule.','De reeks of een uitzondering is gewijzigd. Sluit de planning en open deze opnieuw.','La serie o una delle sue eccezioni è cambiata. Chiudi e riapri la programmazione.'],
+  ['Impossible de confirmer l’enregistrement de la série. Actualisez le calendrier avant de réessayer.','Unable to confirm the series was saved. Refresh the calendar before trying again.','Kan niet bevestigen dat de reeks is opgeslagen. Vernieuw de kalender voordat u het opnieuw probeert.','Impossibile confermare il salvataggio della serie. Aggiorna il calendario prima di riprovare.'],
+  ['La série doit être relue avant sa modification.','The series must be read again before editing.','De reeks moet opnieuw worden gelezen voordat deze wordt gewijzigd.','La serie deve essere riletta prima di modificarla.'],
+  ['Réponse de série invalide.','Invalid series response.','Ongeldig antwoord voor de reeks.','Risposta della serie non valida.'],['Impossible de modifier la série.','Unable to edit the series.','De reeks kan niet worden gewijzigd.','Impossibile modificare la serie.'],
   ['La série a été reprogrammée.','The series was rescheduled.','De reeks is opnieuw gepland.','La serie è stata riprogrammata.'],['Règle de répétition indisponible. Ouvrez une occurrence habituelle.','Recurrence rule unavailable. Open a regular occurrence.','Herhalingsregel niet beschikbaar. Open een gewone uitvoering.','Regola di ripetizione non disponibile. Apri un’occorrenza regolare.'],['Portée de modification invalide.','Invalid edit scope.','Ongeldig wijzigingsbereik.','Ambito di modifica non valido.'],
   ['Cliquez pour modifier. Glissez ⠿ pour déplacer un seul jour.','Click to edit. Drag ⠿ to move one occurrence.','Klik om te wijzigen. Sleep ⠿ om één datum te verplaatsen.','Fai clic per modificare. Trascina ⠿ per spostare una sola occorrenza.'],
   ['Mois','Month','Maand','Mese'],['Semaine','Week','Week','Settimana'],['Agenda','Agenda','Agenda','Agenda'],['Aujourd’hui','Today','Vandaag','Oggi'],
@@ -526,12 +546,12 @@ function normalizeSchedule(raw,calendar,zone) {
   const start=eventTime(raw.start,zone),end=eventTime(raw.end,zone);
   return {...raw,calendar,start,end,meta,legacy,role:meta?'schedule':legacy?.kind==='closure'?'legacy-closure':legacy?'legacy':'external',key:`${calendar}|${raw.uid || raw.summary}|${raw.recurrence_id || start}`};
 }
-function recurring(event) {return !!(event.rrule || event.recurrence_id);}
+function recurring(event) {return !!(event.rrule || event.recurrence_id || event.series_id);}
 function sameOccurrence(a,b) {return a.calendar===b.calendar && a.uid===b.uid && (a.recurrence_id || '')===(b.recurrence_id || '');}
 function occurrenceSelector(event,scope='occurrence') {
   if(!['occurrence','series'].includes(scope))throw new Error('Portée de modification invalide.');
   if(!event.uid) throw new Error('Cet événement ne possède pas d’identifiant modifiable.');
-  if(scope==='occurrence' && recurring(event)) {
+  if(scope==='occurrence' && (event.rrule || event.recurrence_id)) {
     if(typeof event.recurrence_id !== 'string' || !event.recurrence_id) throw new Error('Ce calendrier ne fournit pas l’identifiant de cette occurrence. La série n’a pas été modifiée.');
     return {uid:event.uid,recurrence_id:event.recurrence_id};
   }
@@ -539,17 +559,21 @@ function occurrenceSelector(event,scope='occurrence') {
 }
 function schedulePayload(draft) {
   const event={dtstart:draft.start,dtend:draft.end,summary:draft.summary.trim(),description:JSON.stringify({planning:2,kind:'schedule',id:draft.event_id || newEventId(),color:eventColor(draft.color),has_end:!!draft.has_end,start_actions:draft.start_actions,end_actions:draft.has_end?draft.end_actions:[],note:draft.note || ''})};
+  if(!draft.uid && draft.rrule)event.description=JSON.stringify({...JSON.parse(event.description),series_origin:{dtstart:draft.start,dtend:draft.end,rrule:draft.rrule}});
   if(draft.rrule && (!draft.uid || draft.scope==='series')) event.rrule=draft.rrule;
-  return {type:`calendar/event/${draft.uid?'update':'create'}`,entity_id:draft.calendar,...(draft.uid?occurrenceSelector(draft,draft.scope):{}),...(draft.uid && draft.scope==='series'?{recurrence_range:'THISANDFUTURE'}:{}),event};
+  if(draft.uid && draft.scope==='series')return preservingSeriesPayload(draft,event,draft.series_revision);
+  return {type:`calendar/event/${draft.uid?'update':'create'}`,entity_id:draft.calendar,...(draft.uid?occurrenceSelector(draft,draft.scope):{}),event};
 }
+function preservingSeriesPayload(original,event,revision){if(!revision)throw new Error('La série doit être relue avant sa modification.');return {type:'planning-series-update',entity_id:original.calendar,...occurrenceSelector(original,'series'),expected_revision:revision,event};}
 function occurrenceDeletePayload(event,scope='occurrence') {return {type:'calendar/event/delete',entity_id:event.calendar,...occurrenceSelector(event,scope)};}
 function calendarEditPayload(original,changes,scope='occurrence'){
   const event={dtstart:changes.start,dtend:changes.end,summary:changes.summary ?? original.summary,description:changes.description ?? original.description ?? ''};
   if(typeof original.location==='string')event.location=original.location;
   if(scope==='series'){const rule=changes.rrule || original.rrule;if(!rule)throw new Error('Règle de répétition indisponible. Ouvrez une occurrence habituelle.');event.rrule=rule;}
-  return {type:'calendar/event/update',entity_id:original.calendar,...occurrenceSelector(original,scope),...(scope==='series'?{recurrence_range:'THISANDFUTURE'}:{}),event};
+  if(scope==='series')return preservingSeriesPayload(original,event,changes.series_revision);
+  return {type:'calendar/event/update',entity_id:original.calendar,...occurrenceSelector(original,scope),event};
 }
-function seriesRule(event,events=[]){return event.rrule || events.find(e=>e.calendar===event.calendar && e.uid===event.uid && e.rrule)?.rrule || '';}
+function seriesRule(event,events=[]){return event.series_rule || event.rrule || events.find(e=>e.calendar===event.calendar && e.uid===event.uid && e.rrule)?.rrule || '';}
 function ruleDays(rule,fallback=1){const days=rule?.match(/(?:^|;)BYDAY=([^;]+)/i)?.[1];return days?days.split(',').map(value=>['SU','MO','TU','WE','TH','FR','SA'].indexOf(value.replace(/^[+-]?\d+/,''))).filter(value=>value>=0):[fallback];}
 function editedWeeklyRule(rule,days){
   if(!/(?:^|;)FREQ=WEEKLY(?:;|$)/i.test(rule))return rule;
@@ -734,6 +758,162 @@ class PlanningActionStore {
     }
     throw new Error('L’automatisation est enregistrée. Actualisez la carte lorsque Home Assistant a terminé son chargement.');
   }
+}
+
+
+
+// RFC 5545 line folding and TEXT escaping. Import only the selected UID; no
+// calendar content is uploaded anywhere or turned into arbitrary HA services.
+function textValue(value){return value.replace(/\\([nN,;\\])/g,(_,c)=>c==='n'||c==='N'?'\n':c);}
+function property(line){let quoted=false,index=-1;for(let i=0;i<line.length;i++){if(line[i]==='"')quoted=!quoted;if(line[i]===':'&&!quoted){index=i;break;}}if(index<0)throw new Error('Fichier ICS invalide.');const [name,...parameters]=line.slice(0,index).split(';'),params=Object.fromEntries(parameters.map(p=>{const at=p.indexOf('=');return [p.slice(0,at).toUpperCase(),p.slice(at+1).replace(/^"|"$/g,'')];}));return {name:name.toUpperCase(),params,value:line.slice(index+1)};}
+function instant(value,params,zone){
+  if(!/^\d{8}T\d{6}Z?$/.test(value))throw new Error('Seules les séries avec une heure sont prises en charge dans cet import.');
+  const wall=`${value.slice(0,4)}-${value.slice(4,6)}-${value.slice(6,8)}T${value.slice(9,11)}:${value.slice(11,13)}`;
+  if(value.endsWith('Z'))return new Date(wall+':'+value.slice(13,15)+'Z').toISOString();
+  return new Date(Date.parse(toInstant(wall,params.TZID || zone))+Number(value.slice(13,15))*1000).toISOString();
+}
+function importSeriesIcs(source,uid,zone){
+  if(typeof source!=='string' || source.length>10_000_000)throw new Error('Fichier ICS invalide ou trop volumineux.');
+  const unfolded=source.replace(/^\uFEFF/,'').replace(/\r?\n[ \t]/g,'').trim(),lines=unfolded.split(/\r?\n/);
+  if(lines[0]!=='BEGIN:VCALENDAR'||lines.at(-1)!=='END:VCALENDAR'||lines.filter(l=>l==='BEGIN:VCALENDAR').length!==1)throw new Error('Fichier ICS invalide.');
+  const events=[];let fields=null,depth=0;
+  for(const line of lines){
+    if(line==='BEGIN:VEVENT'){if(fields)throw new Error('Fichier ICS invalide.');fields=[];depth=0;continue;}
+    if(!fields)continue;
+    if(line==='END:VEVENT'){if(depth)throw new Error('Fichier ICS invalide.');events.push(fields);fields=null;continue;}
+    if(line.startsWith('BEGIN:')){depth++;continue;}if(line.startsWith('END:')){depth--;continue;}
+    if(!depth && line)fields.push(property(line));
+  }
+  if(fields)throw new Error('Fichier ICS invalide.');
+  const matching=events.filter(fields=>textValue(fields.find(p=>p.name==='UID')?.value || '')===uid),masters=matching.filter(fields=>fields.some(p=>p.name==='RRULE')&&!fields.some(p=>p.name==='RECURRENCE-ID'));
+  if(masters.length!==1 || matching.some(f=>f.some(p=>p.name==='RDATE'||p.params.RANGE)))throw new Error('Cette série ICS est absente, fractionnée ou incompatible.');
+  const master=masters[0],get=(fields,name)=>fields.find(p=>p.name===name),payload=fields=>{
+    const start=get(fields,'DTSTART'),end=get(fields,'DTEND');if(!start||!end)throw new Error('La série ICS doit préciser son début et sa fin.');
+    return {dtstart:instant(start.value,start.params,zone),dtend:instant(end.value,end.params,zone),summary:textValue(get(fields,'SUMMARY')?.value || ''),description:textValue(get(fields,'DESCRIPTION')?.value || ''),...(get(fields,'LOCATION')?{location:textValue(get(fields,'LOCATION').value)}:{})};
+  };
+  if(get(master,'STATUS')?.value==='CANCELLED' || /(?:BYHOUR|BYMINUTE|BYSECOND)=|FREQ=(?:HOURLY|MINUTELY|SECONDLY)/i.test(get(master,'RRULE').value))throw new Error('Cette série ICS est absente, fractionnée ou incompatible.');
+  const exceptions={};for(const ex of master.filter(p=>p.name==='EXDATE'))for(const value of ex.value.split(','))exceptions[dayOf(instant(value,ex.params,zone),zone)]={deleted:true};
+  for(const fields of matching.filter(f=>f!==master)){const recurrence=get(fields,'RECURRENCE-ID');if(!recurrence||get(fields,'RRULE'))throw new Error('Cette série ICS est absente, fractionnée ou incompatible.');const day=dayOf(instant(recurrence.value,recurrence.params,zone),zone);exceptions[day]=get(fields,'STATUS')?.value==='CANCELLED'?{deleted:true}:{event:payload(fields),uid,native:true,recurrence_id:recurrence.value};}
+  return {model:{...payload(master),rrule:get(master,'RRULE').value},exceptions};
+}
+
+
+
+
+const SERIES_JOURNAL_START='2000-01-03T00:00:00Z',SERIES_JOURNAL_END='2000-01-04T00:00:00Z';
+function seriesJournal(row){try{const data=JSON.parse(row.description || 'null');if(data?.planning_series_journal!==1)return null;if(typeof data.id!=='string'||typeof data.master_uid!=='string'||typeof data.model?.rrule!=='string'||(data.complete&&!data.model.rrule)||!data.exceptions||typeof data.exceptions!=='object'||Array.isArray(data.exceptions))throw 0;return {...data,_uid:row.uid,_raw:row.description};}catch{if(row.description?.includes('planning_series_journal'))throw new Error('Le journal des exceptions est invalide. Aucune série modifiée.');return null;}}
+function seriesOwner(event,records){return records.find(r=>r.master_uid===event.uid || Object.values(r.exceptions).some(x=>x.uid===event.uid));}
+function seriesDay(event,record,zone){const known=Object.entries(record.exceptions).find(([,x])=>x.uid===event.uid && !x.native)?.[0];if(known)return known;const rid=event.recurrence_id,utc=rid?.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/);if(utc)return dayOf(`${utc[1]}-${utc[2]}-${utc[3]}T${utc[4]}:${utc[5]}:${utc[6]}Z`,zone);return rid?.match(/^\d{8}T/)?`${rid.slice(0,4)}-${rid.slice(4,6)}-${rid.slice(6,8)}`:dayOf(event.start,zone);}
+function annotateSeries(events,records){return events.map(event=>{const owner=seriesOwner(event,records);return owner?{...event,series_id:owner.id,series_master_uid:owner.master_uid,series_rule:owner.model.rrule}:event;});}
+function sameSeriesEvent(saved,event){return !!saved && Date.parse(saved.start ?? saved.dtstart)===Date.parse(event.dtstart) && Date.parse(saved.end ?? saved.dtend)===Date.parse(event.dtend) && saved.summary===event.summary && (saved.description || '')===(event.description || '') && (!Object.hasOwn(event,'location') || saved.location===event.location);}
+function pendingDescription(token,slot){return JSON.stringify({planning_series_pending:token,slot});}
+function savedData(record){return Object.fromEntries(Object.entries(record).filter(([key])=>!key.startsWith('_')));}
+function liveDescription(description,id){try{const m=JSON.parse(description);return m?.planning===2?JSON.stringify({...m,series_journal:id}):description;}catch{return description;}}
+
+class PlanningSeriesStore {
+  constructor(getHass,calendar,zone,getNow=()=>Date.now()){this.getHass=getHass;this.calendar=calendar;this.zone=zone;this.getNow=getNow;}
+  async rows(start,end){const query=new URLSearchParams({start,end}),rows=await this.getHass().callApi('GET',`calendars/${this.calendar}?${query}`);if(!Array.isArray(rows))throw new Error('Réponse calendrier invalide.');return rows.map(row=>({...row,start:eventTime(row.start,this.zone),end:eventTime(row.end,this.zone)}));}
+  async records(){const records=(await this.rows(SERIES_JOURNAL_START,SERIES_JOURNAL_END)).map(seriesJournal).filter(Boolean);if(new Set(records.map(r=>r.id)).size!==records.length || new Set(records.map(r=>r.master_uid)).size!==records.length)throw new Error('Plusieurs journaux correspondent à cette série. Aucune modification effectuée.');return records;}
+  async read(event,events=[]){
+    const records=await this.records(),known=seriesOwner(event,records);if(known)return known;
+    const origin=event.meta?.series_origin,rule=event.rrule || event.series_rule || events.find(e=>e.uid===event.uid && e.rrule)?.rrule || origin?.rrule || '';
+    if(!rule && !event.recurrence_id)throw new Error('Règle de répétition indisponible. Ouvrez une occurrence habituelle.');
+    return {planning_series_journal:1,id:newEventId(),master_uid:event.uid,complete:!!origin && !event.meta?.series_journal,model:{dtstart:event.start,dtend:event.end,summary:event.summary,description:event.description || '',rrule:rule,...origin},exceptions:{},pending:null};
+  }
+  import(record,text){const imported=importSeriesIcs(text,record.master_uid,this.zone);return {...record,model:imported.model,exceptions:{...imported.exceptions,...record.exceptions},complete:true};}
+  async assertCurrent(record){if(!record._uid)return;const current=(await this.records()).find(r=>r._uid===record._uid);if(!current || current._raw!==record._raw)throw new Error('La série ou une de ses exceptions a changé. Fermez puis rouvrez la programmation.');}
+  async persist(record){
+    await this.assertCurrent(record);const description=JSON.stringify(savedData(record));
+    const payload={type:`calendar/event/${record._uid?'update':'create'}`,entity_id:this.calendar,...(record._uid?{uid:record._uid}:{}),event:{dtstart:SERIES_JOURNAL_START,dtend:SERIES_JOURNAL_END,summary:'Planning — exceptions',description}};
+    let error;try{await this.getHass().callWS(payload);}catch(e){error=e;}
+    const confirmed=(await this.records()).filter(r=>r.id===record.id && r._raw===description);if(confirmed.length!==1)throw error || new Error('Le journal des exceptions n’a pas pu être enregistré.');
+    record._uid=confirmed[0]._uid;record._raw=description;return record;
+  }
+  async dayRows(day){return this.rows(toInstant(`${day}T00:00`,this.zone),toInstant(`${shiftDay(day,1)}T00:00`,this.zone));}
+  async native(payload){
+    if(!['calendar/event/create','calendar/event/update','calendar/event/delete'].includes(payload.type)||payload.entity_id!==this.calendar)throw new Error('Opération de calendrier invalide.');
+    try{return await this.getHass().callWS(payload);}catch(error){
+      if(payload.type.endsWith('/delete')){if(/no existing item/i.test(error?.message || ''))return;throw error;}
+      const event=payload.event,day=dayOf(event.dtstart,this.zone),rows=await this.dayRows(day);
+      if(rows.some(row=>(!payload.uid || row.uid===payload.uid) && (!payload.recurrence_id || row.recurrence_id===payload.recurrence_id) && sameSeriesEvent(row,event)))return;
+      throw error;
+    }
+  }
+  async guard(record){
+    const today=dayOf(this.getNow(),this.zone),ids=new Set([record.master_uid,...Object.values(record.exceptions).map(e=>e.uid).filter(Boolean)]),now=this.getNow();
+    for(const row of await this.rows(toInstant(`${shiftDay(today,-1)}T00:00`,this.zone),toInstant(`${shiftDay(today,2)}T00:00`,this.zone))){let m;try{m=JSON.parse(row.description);}catch{}if(ids.has(row.uid)&&m?.has_end&&Date.parse(row.start)<=now&&now<Date.parse(row.end))throw new Error('Ce créneau est en cours. Son action de fin est conservée ; modifiez une occurrence future.');}
+  }
+  async occurrence(original,payload){
+    const record=await this.read(original),day=seriesDay(original,record,this.zone);if(record.pending)throw new Error('Une sauvegarde de série doit d’abord être reprise. Actualisez le calendrier.');
+    const entry=payload.type.endsWith('/delete')?{deleted:true}:{event:{...payload.event},uid:original.uid,...(payload.recurrence_id?{native:true,recurrence_id:payload.recurrence_id}:{})};
+    record.pending={kind:'occurrence',payload,day,actual_day:dayOf(original.start,this.zone),entry};await this.persist(record);await this.recover(record);return record;
+  }
+  async update(record,event){
+    if(!record.complete)throw new Error('Importez une fois le fichier ICS pour conserver toutes les exceptions de cette ancienne série.');
+    if(record.pending)throw new Error('Une sauvegarde de série doit d’abord être reprise. Actualisez le calendrier.');
+    if(!Number.isFinite(Date.parse(event.dtstart)) || Date.parse(event.dtstart)<this.getNow()+20*60000)throw new Error('Prévoyez au moins 20 minutes avant le début.');
+    await this.guard(record);
+    for(const entry of Object.values(record.exceptions))if(entry.event && (!entry.uid || entry.uid===record.master_uid)){const start=Date.parse(entry.event.dtstart);if(start>=this.getNow()-90000 && start<this.getNow()+20*60000)throw new Error('Une exception commence bientôt. Réessayez après son exécution.');}
+    const model={...event,description:liveDescription(event.description,record.id)},exceptions=structuredClone(record.exceptions);
+    record.pending={kind:'series',token:newEventId(),model,exceptions,old_uid:record.master_uid,new_uid:'',phase:'prepare'};
+    await this.persist(record);await this.recover(record);return record;
+  }
+  async createStaged(record,slot,event){
+    const description=pendingDescription(record.pending.token,slot),staged={...event,description};let rows=await this.dayRows(dayOf(event.dtstart,this.zone)),same=rows.find(row=>sameSeriesEvent(row,staged));
+    if(!same){await this.native({type:'calendar/event/create',entity_id:this.calendar,event:staged});rows=await this.dayRows(dayOf(event.dtstart,this.zone));same=rows.find(row=>sameSeriesEvent(row,staged));}
+    if(!same?.uid)throw new Error('Le nouvel événement n’a pas pu être retrouvé. Actualisez pour reprendre la sauvegarde.');return same.uid;
+  }
+  async recover(record){
+    const plan=record.pending;if(!plan)return record;await this.assertCurrent(record);
+    if(!['occurrence','series','delete'].includes(plan.kind))throw new Error('Opération de calendrier invalide.');
+    if(plan.kind==='occurrence'){
+      const p=plan.payload;
+      if(p.type.endsWith('/delete')){const rows=await this.dayRows(plan.actual_day);if(rows.some(row=>row.uid===p.uid && (!p.recurrence_id || row.recurrence_id===p.recurrence_id)))await this.native(p);}
+      else await this.native(p);
+      record.exceptions[plan.day]=plan.entry;record.pending=null;return this.persist(record);
+    }
+    if(plan.kind==='delete'){
+      for(const uid of plan.uids){await this.assertCurrent(record);await this.native({type:'calendar/event/delete',entity_id:this.calendar,uid});}
+      await this.native({type:'calendar/event/delete',entity_id:this.calendar,uid:record._uid});return record;
+    }
+    if(plan.phase==='prepare'){
+      if(!plan.new_uid){plan.new_uid=await this.createStaged(record,'master',plan.model);await this.persist(record);}
+      for(const [day,entry] of Object.entries(plan.exceptions))if(entry.event && (!entry.uid || entry.uid===plan.old_uid)){
+        entry.uid=await this.createStaged(record,day,entry.event);delete entry.native;delete entry.recurrence_id;entry.staged=true;await this.persist(record);
+      }
+      for(const day of Object.keys(plan.exceptions)){
+        await this.assertCurrent(record);for(const row of await this.dayRows(day))if(row.uid===plan.new_uid && row.recurrence_id)await this.native({type:'calendar/event/delete',entity_id:this.calendar,uid:row.uid,recurrence_id:row.recurrence_id});
+      }
+      plan.phase='activate';await this.persist(record);
+    }
+    if(plan.phase==='activate'){
+      await this.assertCurrent(record);await this.native({type:'calendar/event/delete',entity_id:this.calendar,uid:plan.old_uid});
+      // Only the master belongs to this UID. Its start/rule stay unchanged, so
+      // Local Calendar retains the EXDATEs while this description is activated.
+      await this.native({type:'calendar/event/update',entity_id:this.calendar,uid:plan.new_uid,event:plan.model});
+      for(const entry of Object.values(plan.exceptions))if(entry.staged){await this.assertCurrent(record);await this.native({type:'calendar/event/update',entity_id:this.calendar,uid:entry.uid,event:entry.event});delete entry.staged;}
+      record.master_uid=plan.new_uid;record.model=plan.model;record.exceptions=plan.exceptions;record.pending=null;await this.persist(record);
+    }
+    return record;
+  }
+  async deleteSeries(original){const record=await this.read(original);if(record.pending)throw new Error('Une sauvegarde de série doit d’abord être reprise. Actualisez le calendrier.');await this.guard(record);record.pending={kind:'delete',uids:[...new Set([record.master_uid,...Object.values(record.exceptions).map(x=>x.uid).filter(Boolean)])]};await this.persist(record);await this.recover(record);}
+}
+
+
+
+
+function expandDemoCalendar(rows,start,end,zone){
+  const out=[],from=dayOf(start,zone),to=dayOf(end,zone);
+  for(const row of rows){
+    if(!row.rrule){if(Date.parse(row.start)<Date.parse(end)&&Date.parse(row.end)>Date.parse(start))out.push({...row});continue;}
+    const first=dayOf(row.start,zone),names=['SU','MO','TU','WE','TH','FR','SA'],days=(row.rrule.match(/BYDAY=([^;]+)/)?.[1] || names[weekday(first)]).split(',').map(x=>names.indexOf(x)),count=Number(row.rrule.match(/COUNT=(\d+)/)?.[1] || Infinity),interval=Number(row.rrule.match(/INTERVAL=(\d+)/)?.[1] || 1);let seen=0;
+    for(let day=first,index=0;day<to && index<50000;day=shiftDay(day,1),index++){
+      const eligible=row.rrule.includes('FREQ=DAILY')?index%interval===0:days.includes(weekday(day))&&Math.floor((index+(weekday(first)+6)%7)/7)%interval===0;
+      if(!eligible)continue;if(++seen>count)break;const shifted=shiftedOccurrence(row,day,undefined,zone),rid=localMinute(shifted.start,zone).replace(/[-:]/g,'')+'00';if(day<from||row.deleted?.includes(rid)||row.exceptions?.[rid])continue;out.push({...row,...shifted,recurrence_id:rid});
+    }
+    for(const [rid,event] of Object.entries(row.exceptions || {}))if(Date.parse(event.start)<Date.parse(end)&&Date.parse(event.end)>Date.parse(start))out.push({...row,...event,rrule:'',recurrence_id:rid});
+  }
+  return out;
 }
 
 const BASE_PLANNING_STYLE = `
@@ -961,6 +1141,8 @@ if(!customElements.get('ha-planning-chauffe-card-editor'))customElements.define(
 
 
 
+
+
 class PlanningCard extends HTMLElement {
   constructor(){
     super();this.attachShadow({mode:'open'});this._events=[];this._demoRows=[];this._snapshot={records:[],ready:false,test_mode:true};this._generation=0;
@@ -987,6 +1169,7 @@ class PlanningCard extends HTMLElement {
     this._clearPointer();this._deviceDraft=null;
     this._initialized=true;this._zone=this._hass.config?.time_zone || 'Europe/Brussels';this._selected=dayOf(Date.now(),this._zone);this._month=this._selected.slice(0,7);this._view=this._config.appearance.default_view;this._draft=null;this._settings=false;this._events=[];this._error='';this._loaded=!!this._config.demo;this._loading=false;this._snapshot={records:[],ready:false,test_mode:true};
     this._store=new PlanningActionStore(()=>this._hass,this._config.calendar,this._config.execution_automation);
+    this._seriesRecords=[];this._seriesStore=new PlanningSeriesStore(()=>this._config.demo?{callApi:async(method,path)=>{const q=new URLSearchParams(path.split('?')[1]);return expandDemoCalendar(this._demoRows,q.get('start'),q.get('end'),this._zone);},callWS:async payload=>{this._demoWrite(payload);return null;}}:this._hass,this._config.calendar || 'calendar.demo',this._zone);
     this._render();this._load();
   }
   get _weekHourHeight(){return this._config.appearance.density==='compact'?40:44;}
@@ -1017,29 +1200,19 @@ class PlanningCard extends HTMLElement {
     const query=new URLSearchParams({start:toInstant(`${start}T00:00`,this._zone),end:toInstant(`${end}T00:00`,this._zone)});
     const rows=await this._hass.callApi('GET',`calendars/${this._config.calendar}?${query}`);
     if(!Array.isArray(rows))throw new Error('Réponse calendrier invalide.');
-    return rows.filter(r=>!actionRegistry(r) && !r.description?.includes('"planning_devices"')).map(r=>normalizeSchedule(r,this._config.calendar,this._zone));
+    return rows.filter(r=>!actionRegistry(r) && !r.description?.includes('"planning_devices"') && !r.description?.includes('"planning_series_journal"') && !r.description?.includes('"planning_series_pending"')).map(r=>normalizeSchedule(r,this._config.calendar,this._zone));
   }
   async _load(){
     if(!this._initialized || this._loading)return;
-    if(this._config.demo){this._expandDemo();this._loaded=true;this._render();return;}
-    if(!this._config.calendar)return;
+    if(!this._config.calendar && !this._config.demo)return;
     const generation=this._generation;this._loading=true;
-    try{const range=this._range();const [events,snapshot]=await Promise.all([this._fetch(range.queryStart,range.queryEnd),this._store.load()]);if(generation!==this._generation)return;if(snapshot.ready && snapshot.config && snapshot.needsPublish){try{await this._store.publish(snapshot);snapshot.needsPublish=false;}catch(e){snapshot.publishError=e.message;}}this._events=events;this._snapshot=snapshot;this._loaded=true;this._error=snapshot.publishError || '';}
+    try{this._seriesRecords=await this._seriesStore.records();for(const record of this._seriesRecords)if(record.pending)await this._seriesStore.recover(record);this._seriesRecords=await this._seriesStore.records();if(this._config.demo){this._expandDemo();this._loaded=true;return;}const range=this._range();const [events,snapshot]=await Promise.all([this._fetch(range.queryStart,range.queryEnd),this._store.load()]);if(generation!==this._generation)return;if(snapshot.ready && snapshot.config && snapshot.needsPublish){try{await this._store.publish(snapshot);snapshot.needsPublish=false;}catch(e){snapshot.publishError=e.message;}}this._events=annotateSeries(events,this._seriesRecords);this._snapshot=snapshot;this._loaded=true;this._error=snapshot.publishError || '';}
     catch(e){if(generation===this._generation){this._error=e.message;this._loaded=false;}}
     finally{if(generation===this._generation){this._loading=false;this._render();}}
   }
   _expandDemo(){
-    const range=this._range(),expanded=[];
-    for(const row of this._demoRows){
-      if(!row.rrule){expanded.push(normalizeSchedule(row,this._config.calendar || 'calendar.demo',this._zone));continue;}
-      const days=(row.rrule.match(/BYDAY=([^;]+)/)?.[1] || '').split(',').map(x=>['SU','MO','TU','WE','TH','FR','SA'].indexOf(x));
-      for(let day=range.queryStart;day<range.queryEnd;day=shiftDay(day,1))if(day>=dayOf(row.start,this._zone) && days.includes(weekday(day))){
-        const shifted=shiftedOccurrence(row,day,undefined,this._zone),rid=localMinute(shifted.start,this._zone).replace(/[-:]/g,'')+'00';
-        if(row.deleted?.includes(rid))continue;
-        expanded.push(normalizeSchedule({...row,...shifted,...row.exceptions?.[rid],recurrence_id:rid},this._config.calendar || 'calendar.demo',this._zone));
-      }
-    }
-    this._events=expanded;
+    const range=this._range(),rows=expandDemoCalendar(this._demoRows,toInstant(`${range.queryStart}T00:00`,this._zone),toInstant(`${range.queryEnd}T00:00`,this._zone),this._zone);
+    this._events=annotateSeries(rows.filter(r=>!r.description?.includes('"planning_series_journal"')&&!r.description?.includes('"planning_series_pending"')).map(row=>normalizeSchedule(row,this._config.calendar || 'calendar.demo',this._zone)),this._seriesRecords || []);
   }
   _button(label,action,extra=''){return `<button type="button" data-action="${action}" ${this._busy?'disabled':''} ${extra}>${label}</button>`;}
   _executionLabel(){if(this._config.demo)return 'Essai local · aucune commande envoyée';if(!this._snapshot.ready)return 'Choisissez vos horaires, puis préparez l’exécution dans Réglages.';if(!this._snapshot.config)return 'Programmations partagées · exécution gérée par Home Assistant';if(this._hass.states[this._store.automation]?.state==='off')return 'Automatisation désactivée dans Home Assistant';return this._snapshot.test_mode?'Mode test · notifications uniquement':'Exécution Home Assistant active';}
@@ -1064,9 +1237,9 @@ class PlanningCard extends HTMLElement {
     const choices=this._choices(),list=this._draft[phase];
     return list.map((row,index)=>{const record=this._record(row.target),ops=operationsFor(record);return `<div class="action-row" data-phase="${phase}" data-index="${index}"><select data-target aria-label="Appareil ${phase==='start_actions'?'au début':'à la fin'} ${index+1}"><option value="">Choisir un appareil ou un script</option>${choices.map(r=>`<option translate="no" value="${esc(r.value)}" ${r.value===row.target?'selected':''}>${esc(r.name)}</option>`).join('')}${row.target && !choices.some(r=>r.value===row.target)?`<option translate="no" selected value="${esc(row.target)}">${esc(row.target)} (${this._t('indisponible')})</option>`:''}</select><select data-operation aria-label="Action ${index+1}">${Object.entries(ops).map(([value,label])=>`<option value="${value}" ${row.op===value?'selected':''}>${label}</option>`).join('')}</select><button type="button" data-remove-action aria-label="Retirer l’action ${index+1}">×</button></div>`;}).join('');
   }
-  _scopeHtml(d){return `<label class="field">Modifier<select name="scope" aria-label="Portée de la modification"><option value="occurrence" ${d.scope==='occurrence'?'selected':''}>Ce jour uniquement</option><option value="series" ${d.scope==='series'?'selected':''}>Toute la série</option></select></label>${d.scope==='series'?'<p class="status notice">Toute la série sera reprogrammée à partir de la date choisie. Les jours déplacés ou supprimés individuellement seront réinitialisés.</p>':'<p class="status notice">Seul ce jour sera modifié. Les autres occurrences gardent leur horaire et leurs actions.</p>'}`;}
+  _scopeHtml(d){return `<label class="field">Modifier<select name="scope" aria-label="Portée de la modification"><option value="occurrence" ${d.scope==='occurrence'?'selected':''}>Ce jour uniquement</option><option value="series" ${d.scope==='series'?'selected':''}>Toute la série</option></select></label>${d.scope==='series'?`<p class="status notice">La série sera modifiée à partir de la date choisie. Les jours déjà déplacés ou supprimés sont conservés.</p>${d.seriesSnapshot && !d.seriesSnapshot.complete?'<p class="status notice">Ancienne série : importez une fois le fichier ICS du calendrier pour reprendre aussi les jours déjà supprimés.</p><label class="field">Importer les exceptions existantes<input type="file" name="series_import" accept=".ics,text/calendar"></label>':''}${d.seriesError?`<p class="status error">${esc(d.seriesError.message)}</p>`:''}`:'<p class="status notice">Seul ce jour sera modifié. Les autres occurrences gardent leur horaire et leurs actions.</p>'}`;}
   _formHtml(){
-    const d=this._draft,existing=!!d.uid,isRecurring=!!d.rrule || !!d.recurrence_id;
+    const d=this._draft,existing=!!d.uid,isRecurring=recurring(d);
     if(d.calendarOnly)return this._calendarOnlyFormHtml();
     if(d.readonly)return `<section class="panel"><h2 translate="no">${esc(d.summary)}</h2><p>Ce calendrier ne fournit pas d’identifiant modifiable pour cet événement. Utilisez un calendrier local permettant sa modification.</p>${this._button('Fermer','cancel')}</section>`;
     return `<form><div class="toolbar"><h2>${existing?'Modifier cette programmation':'Nouvelle programmation'}</h2>${this._button('Fermer','cancel')}</div>${existing && isRecurring?this._scopeHtml(d):''}<label class="field">Nom<input required name="summary" maxlength="120" value="${esc(d.summary)}" placeholder="Ex. Chauffe atelier ou ouverture barrière"></label><div class="grid2"><label>${existing && d.scope==='series'?'Date de début de la série':existing?'Date de cette occurrence':'Date de début'}<input required type="date" name="date" value="${d.date}"></label>${!existing?`<label>Répétition<select name="repeat"><option value="once" ${d.repeat==='once'?'selected':''}>Une seule fois</option><option value="weekly" ${d.repeat==='weekly'?'selected':''}>Chaque semaine</option></select></label>`:'<p class="hint">Pour déplacer, changez la date ou l’heure. Vous pouvez aussi glisser la programmation sur le calendrier.</p>'}</div>${((!existing && d.repeat==='weekly') || (existing && d.scope==='series' && /(?:^|;)FREQ=WEEKLY(?:;|$)/i.test(d.seriesRule)))?`<div class="field"><label>Jours habituels</label><div class="weekdays">${[1,2,3,4,5,6,0].map(i=>`<label class="check"><input type="checkbox" data-weekday="${i}" ${d.days.includes(i)?'checked':''}>${this._weekday(i)}</label>`).join('')}</div><p class="hint">Créez autant de programmations que nécessaire pour des horaires différents.</p></div>`:''}<h3>Au début</h3>${this._timeSelect('start',`${d.start_hour}:${d.start_minute}`)}${this._actionsHtml('start_actions')}${this._button('+ Ajouter une action','add-start')}<label class="check field"><input name="has_end" type="checkbox" ${d.has_end?'checked':''}>Prévoir une heure et des actions de fin</label>${d.has_end?`<h3>À la fin</h3>${this._timeSelect('end',`${d.end_hour}:${d.end_minute}`)}<p class="hint">Si l’heure de fin précède l’heure de début, le créneau se termine le lendemain.</p>${this._actionsHtml('end_actions')}${this._button('+ Ajouter une action à la fin','add-end')}`:'<p class="hint">Action ponctuelle : adapté au démarrage des Frech, sans arrêt programmé.</p>'}<div class="grid2 field"><label>Couleur<input type="color" name="color" value="${eventColor(d.color)}"></label><label>Note facultative<textarea name="note" rows="2">${esc(d.note)}</textarea></label></div>${!this._config.demo && !this._snapshot.ready?'<p class="status">Le premier enregistrement préparera l’exécution du calendrier en mode test. Un administrateur est nécessaire.</p>':''}<div class="buttons"><button class="primary" type="submit" ${this._busy?'disabled':''}>${this._busy?'Enregistrement…':d.scope==='series'?'Enregistrer la série':'Enregistrer'}</button>${this._button('Annuler','cancel')}${existing?this._button(isRecurring?'Supprimer ce jour':'Supprimer','delete','class="danger"'):''}</div>${existing && isRecurring?`<details><summary>Toute la série</summary><p class="hint">La suppression de série retire toutes ses occurrences, y compris les jours déplacés.</p>${this._button('Supprimer toute la série','delete-series','class="danger"')}</details>`:''}${d.deleteScope?`<div class="status"><p>${d.deleteScope==='series'?'Supprimer toutes les occurrences de cette série ?':'Supprimer uniquement cette occurrence ?'}</p>${this._button('Confirmer la suppression','confirm-delete','class="danger"')} ${this._button('Conserver','keep')}</div>`:''}</form>`;
@@ -1107,14 +1280,31 @@ class PlanningCard extends HTMLElement {
   }
   _change(event){
     const el=event.target;if(this._deviceChange(el))return;const d=this._draft;if(!d)return;
+    if(el.name==='series_import'){this._importSeries(el.files?.[0],d);return;}
     const rowEl=el.closest('.action-row');
     if(rowEl){const row=d[rowEl.dataset.phase][Number(rowEl.dataset.index)];if(el.hasAttribute('data-target')){row.target=el.value;row.op=defaultOperation(this._record(row.target));this._render();}else if(el.hasAttribute('data-operation'))row.op=el.value;return;}
     if(el.dataset.weekday!==undefined){d.days=Array.from(this.shadowRoot.querySelectorAll('[data-weekday]:checked'),e=>Number(e.dataset.weekday));return;}
     if(!el.name)return;d[el.name]=el.type==='checkbox'?el.checked:el.value;
     if(el.name==='date' && !d.uid && d.repeat==='once' && /^\d{4}-\d{2}-\d{2}$/.test(d.date))d.days=[weekday(d.date)];
     if(el.name==='has_end' && d.has_end && !d.end_actions.length)d.end_actions=d.start_actions.filter(a=>a.target && oppositeOperation(a.op) && Object.hasOwn(operationsFor(this._record(a.target)),oppositeOperation(a.op))).map(a=>({target:a.target,op:oppositeOperation(a.op)}));
+    if(el.name==='scope' && d.scope==='series')this._captureSeries(d);
     if(['repeat','has_end','scope'].includes(el.name))this._render();
   }
+  _captureSeries(d){
+    if(d.seriesSnapshot)return Promise.resolve(d.seriesSnapshot);
+    if(d.seriesPending)return d.seriesPending;
+    d.seriesPending=(async()=>{
+      try{
+        const snapshot=await this._seriesStore.read(d.original,this._events),row=this._config.demo?this._demoRows.find(row=>row.uid===snapshot.master_uid):null;
+        if(row && !snapshot.complete){snapshot.complete=true;snapshot.model={dtstart:row.start,dtend:row.end,summary:row.summary,description:row.description,rrule:row.rrule};for(const rid of row.deleted || [])snapshot.exceptions[`${rid.slice(0,4)}-${rid.slice(4,6)}-${rid.slice(6,8)}`]={deleted:true};for(const [rid,item] of Object.entries(row.exceptions || {}))snapshot.exceptions[`${rid.slice(0,4)}-${rid.slice(4,6)}-${rid.slice(6,8)}`]={event:{dtstart:item.start,dtend:item.end,summary:item.summary,description:item.description},uid:row.uid,native:true,recurrence_id:rid};}
+        d.seriesSnapshot=snapshot;d.series_revision=snapshot._raw || snapshot.id;
+        if(!d.seriesRule){d.seriesRule=snapshot.model.rrule;d.days=ruleDays(d.seriesRule,weekday(d.date));}
+        return snapshot;
+      }catch(error){d.seriesError=error;return null;}
+      finally{if(this._draft===d && d.scope==='series' && !this._busy)this._render();}
+    })();return d.seriesPending;
+  }
+  async _importSeries(file,d){if(!file)return;try{const snapshot=await this._captureSeries(d);if(!snapshot)throw d.seriesError;d.seriesSnapshot=this._seriesStore.import(snapshot,await file.text());d.seriesRule=d.seriesSnapshot.model.rrule;d.days=ruleDays(d.seriesRule,weekday(d.date));d.seriesError=null;if(this._draft===d)this._error='';}catch(error){d.seriesError=error;}if(this._draft===d)this._render();}
   _draftDates(d){
     const time=`${d.start_hour}:${d.start_minute}`;
     if(d.calendarOnly){const first=d.scope==='series' && /(?:^|;)FREQ=WEEKLY(?:;|$)/i.test(d.seriesRule)?dayOf(weeklyStart(d.date,time,d.days,this._zone,Date.now(),true),this._zone):d.date;return shiftedOccurrence(d.original,first,Number(d.start_hour)*60+Number(d.start_minute),this._zone);}
@@ -1134,9 +1324,13 @@ class PlanningCard extends HTMLElement {
     const row=this._demoRows.find(x=>x.uid===payload.uid);
     if(payload.type.endsWith('/delete')){if(payload.recurrence_id){row.deleted=[...(row.deleted || []),payload.recurrence_id];if(row.exceptions)delete row.exceptions[payload.recurrence_id];}else this._demoRows=this._demoRows.filter(x=>x.uid!==payload.uid);return;}
     const saved={...payload.event,start:payload.event.dtstart,end:payload.event.dtend,uid:payload.uid || newEventId()};
-    if(payload.recurrence_id){row.exceptions={...row.exceptions,[payload.recurrence_id]:saved};}else if(row){Object.assign(row,saved);if(payload.event.rrule){row.exceptions={};row.deleted=[];}}else this._demoRows.push(saved);
+    if(payload.recurrence_id){row.exceptions={...row.exceptions,[payload.recurrence_id]:{...saved,rrule:''}};}else if(row){if(saved.rrule && (saved.start!==row.start || saved.rrule!==row.rrule)){row.exceptions={};row.deleted=[];}Object.assign(row,saved);}else this._demoRows.push(saved);
   }
   async _write(payload,draft){
+    if(payload.type==='planning-series-update')return this._seriesStore.update(this._draft.seriesSnapshot,payload.event);
+    const original=draft?.original || this._draft?.original || this._events.find(e=>e.uid===payload.uid && (!payload.recurrence_id || e.recurrence_id===payload.recurrence_id));
+    if(payload.type.endsWith('/delete') && this._draft?.deleteScope==='series' && original)return this._seriesStore.deleteSeries(original);
+    if(original && recurring(original) && (payload.type.endsWith('/update') || payload.type.endsWith('/delete')))return this._seriesStore.occurrence(original,payload);
     if(this._config.demo){this._demoWrite(payload);return;}
     try{await this._hass.callWS(payload);}catch(error){
       if(!draft)throw error;
@@ -1150,7 +1344,7 @@ class PlanningCard extends HTMLElement {
     try{
       if(!this._config.demo && d.pendingCreate){const pending=d.pendingCreate,rows=await this._fetch(shiftDay(dayOf(pending.start,this._zone),-1),shiftDay(dayOf(pending.end,this._zone),2));const found=rows.filter(e=>e.meta?.id===d.event_id);if(found.length){if(!found.some(e=>e.start===pending.start && e.end===pending.end && e.description===pending.description))throw new Error('Une programmation avec cet identifiant existe déjà. Actualisez avant de recommencer.');this._draft=null;this._notice='La première sauvegarde est déjà enregistrée. Ouvrez la programmation pour la modifier.';await this._load();return;}}
       if(!d.summary.trim())throw new Error('Donnez un nom à la programmation.');
-      if(d.scope==='series'){if(!d.seriesRule)throw new Error('Règle de répétition indisponible. Ouvrez une occurrence habituelle.');d.rrule=editedWeeklyRule(d.seriesRule,d.days);}
+      if(d.scope==='series'){if(!await this._captureSeries(d))throw d.seriesError;if(!d.seriesSnapshot.complete)throw new Error('Importez une fois le fichier ICS pour conserver toutes les exceptions de cette ancienne série.');if(!d.seriesRule)throw new Error('Règle de répétition indisponible. Ouvrez une occurrence habituelle.');d.rrule=editedWeeklyRule(d.seriesRule,d.days);}
       Object.assign(d,this._draftDates(d));
       if(d.calendarOnly){if(!this._config.demo && Date.parse(d.start)<Date.now()+20*60000)throw new Error('Prévoyez au moins 20 minutes avant le début.');await this._freshForIfLive(d.original,d,d.scope);const description=d.legacy?(d.note===(d.legacy.note || '') && eventColor(d.color)===eventColor(d.legacy.color)?d.original.description:JSON.stringify({...d.legacy,note:d.note,color:eventColor(d.color)})):d.note;await this._write(calendarEditPayload(d.original,{...d,description},d.scope),d);this._draft=null;this._notice=d.scope==='series'?'La série a été reprogrammée.':'Cette occurrence a été modifiée. Ses actions existantes sont conservées.';await this._load();return;}
       const initialIssue=validateSchedule(d,this._choices().map(r=>({...r,id:r.value})),Date.now(),this._config.demo);if(initialIssue)throw new Error(initialIssue);

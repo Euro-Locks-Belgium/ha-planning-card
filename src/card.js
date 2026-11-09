@@ -2,6 +2,8 @@ import {esc,dayOf,shiftDay,weekday,toInstant,localMinute,viewRange,eventColor,co
 import {visibleWeekdays} from './views.js';
 import {ACTION_TYPES,ACTION_BLUEPRINT_VERSION,normalizePlanningConfig,normalizeSchedule,simpleActionRecord,targetEntity,operationsFor,defaultOperation,oppositeOperation,recurring,occurrenceSelector,schedulePayload,calendarEditPayload,seriesRule,ruleDays,editedWeeklyRule,occurrenceDeletePayload,shiftedOccurrence,mutationIssue,validateSchedule,weeklyStart,scheduleFingerprint,packWeekEvents} from './actions-model.js';
 import {PlanningActionStore,actionRegistry} from './action-store.js';
+import {PlanningSeriesStore,seriesOwner,annotateSeries} from './series-store.js';
+import {expandDemoCalendar} from './series-demo.js';
 import {PLANNING_STYLE} from './planning-style.js';
 import {PlanningInteractions,INTERACTION_STYLE} from './interactions.js';
 import {PlanningDeviceSettings,DEVICE_SETTINGS_STYLE} from './device-settings.js';
@@ -33,6 +35,7 @@ class PlanningCard extends HTMLElement {
     this._clearPointer();this._deviceDraft=null;
     this._initialized=true;this._zone=this._hass.config?.time_zone || 'Europe/Brussels';this._selected=dayOf(Date.now(),this._zone);this._month=this._selected.slice(0,7);this._view=this._config.appearance.default_view;this._draft=null;this._settings=false;this._events=[];this._error='';this._loaded=!!this._config.demo;this._loading=false;this._snapshot={records:[],ready:false,test_mode:true};
     this._store=new PlanningActionStore(()=>this._hass,this._config.calendar,this._config.execution_automation);
+    this._seriesRecords=[];this._seriesStore=new PlanningSeriesStore(()=>this._config.demo?{callApi:async(method,path)=>{const q=new URLSearchParams(path.split('?')[1]);return expandDemoCalendar(this._demoRows,q.get('start'),q.get('end'),this._zone);},callWS:async payload=>{this._demoWrite(payload);return null;}}:this._hass,this._config.calendar || 'calendar.demo',this._zone);
     this._render();this._load();
   }
   get _weekHourHeight(){return this._config.appearance.density==='compact'?40:44;}
@@ -63,29 +66,19 @@ class PlanningCard extends HTMLElement {
     const query=new URLSearchParams({start:toInstant(`${start}T00:00`,this._zone),end:toInstant(`${end}T00:00`,this._zone)});
     const rows=await this._hass.callApi('GET',`calendars/${this._config.calendar}?${query}`);
     if(!Array.isArray(rows))throw new Error('Réponse calendrier invalide.');
-    return rows.filter(r=>!actionRegistry(r) && !r.description?.includes('"planning_devices"')).map(r=>normalizeSchedule(r,this._config.calendar,this._zone));
+    return rows.filter(r=>!actionRegistry(r) && !r.description?.includes('"planning_devices"') && !r.description?.includes('"planning_series_journal"') && !r.description?.includes('"planning_series_pending"')).map(r=>normalizeSchedule(r,this._config.calendar,this._zone));
   }
   async _load(){
     if(!this._initialized || this._loading)return;
-    if(this._config.demo){this._expandDemo();this._loaded=true;this._render();return;}
-    if(!this._config.calendar)return;
+    if(!this._config.calendar && !this._config.demo)return;
     const generation=this._generation;this._loading=true;
-    try{const range=this._range();const [events,snapshot]=await Promise.all([this._fetch(range.queryStart,range.queryEnd),this._store.load()]);if(generation!==this._generation)return;if(snapshot.ready && snapshot.config && snapshot.needsPublish){try{await this._store.publish(snapshot);snapshot.needsPublish=false;}catch(e){snapshot.publishError=e.message;}}this._events=events;this._snapshot=snapshot;this._loaded=true;this._error=snapshot.publishError || '';}
+    try{this._seriesRecords=await this._seriesStore.records();for(const record of this._seriesRecords)if(record.pending)await this._seriesStore.recover(record);this._seriesRecords=await this._seriesStore.records();if(this._config.demo){this._expandDemo();this._loaded=true;return;}const range=this._range();const [events,snapshot]=await Promise.all([this._fetch(range.queryStart,range.queryEnd),this._store.load()]);if(generation!==this._generation)return;if(snapshot.ready && snapshot.config && snapshot.needsPublish){try{await this._store.publish(snapshot);snapshot.needsPublish=false;}catch(e){snapshot.publishError=e.message;}}this._events=annotateSeries(events,this._seriesRecords);this._snapshot=snapshot;this._loaded=true;this._error=snapshot.publishError || '';}
     catch(e){if(generation===this._generation){this._error=e.message;this._loaded=false;}}
     finally{if(generation===this._generation){this._loading=false;this._render();}}
   }
   _expandDemo(){
-    const range=this._range(),expanded=[];
-    for(const row of this._demoRows){
-      if(!row.rrule){expanded.push(normalizeSchedule(row,this._config.calendar || 'calendar.demo',this._zone));continue;}
-      const days=(row.rrule.match(/BYDAY=([^;]+)/)?.[1] || '').split(',').map(x=>['SU','MO','TU','WE','TH','FR','SA'].indexOf(x));
-      for(let day=range.queryStart;day<range.queryEnd;day=shiftDay(day,1))if(day>=dayOf(row.start,this._zone) && days.includes(weekday(day))){
-        const shifted=shiftedOccurrence(row,day,undefined,this._zone),rid=localMinute(shifted.start,this._zone).replace(/[-:]/g,'')+'00';
-        if(row.deleted?.includes(rid))continue;
-        expanded.push(normalizeSchedule({...row,...shifted,...row.exceptions?.[rid],recurrence_id:rid},this._config.calendar || 'calendar.demo',this._zone));
-      }
-    }
-    this._events=expanded;
+    const range=this._range(),rows=expandDemoCalendar(this._demoRows,toInstant(`${range.queryStart}T00:00`,this._zone),toInstant(`${range.queryEnd}T00:00`,this._zone),this._zone);
+    this._events=annotateSeries(rows.filter(r=>!r.description?.includes('"planning_series_journal"')&&!r.description?.includes('"planning_series_pending"')).map(row=>normalizeSchedule(row,this._config.calendar || 'calendar.demo',this._zone)),this._seriesRecords || []);
   }
   _button(label,action,extra=''){return `<button type="button" data-action="${action}" ${this._busy?'disabled':''} ${extra}>${label}</button>`;}
   _executionLabel(){if(this._config.demo)return 'Essai local · aucune commande envoyée';if(!this._snapshot.ready)return 'Choisissez vos horaires, puis préparez l’exécution dans Réglages.';if(!this._snapshot.config)return 'Programmations partagées · exécution gérée par Home Assistant';if(this._hass.states[this._store.automation]?.state==='off')return 'Automatisation désactivée dans Home Assistant';return this._snapshot.test_mode?'Mode test · notifications uniquement':'Exécution Home Assistant active';}
@@ -110,9 +103,9 @@ class PlanningCard extends HTMLElement {
     const choices=this._choices(),list=this._draft[phase];
     return list.map((row,index)=>{const record=this._record(row.target),ops=operationsFor(record);return `<div class="action-row" data-phase="${phase}" data-index="${index}"><select data-target aria-label="Appareil ${phase==='start_actions'?'au début':'à la fin'} ${index+1}"><option value="">Choisir un appareil ou un script</option>${choices.map(r=>`<option translate="no" value="${esc(r.value)}" ${r.value===row.target?'selected':''}>${esc(r.name)}</option>`).join('')}${row.target && !choices.some(r=>r.value===row.target)?`<option translate="no" selected value="${esc(row.target)}">${esc(row.target)} (${this._t('indisponible')})</option>`:''}</select><select data-operation aria-label="Action ${index+1}">${Object.entries(ops).map(([value,label])=>`<option value="${value}" ${row.op===value?'selected':''}>${label}</option>`).join('')}</select><button type="button" data-remove-action aria-label="Retirer l’action ${index+1}">×</button></div>`;}).join('');
   }
-  _scopeHtml(d){return `<label class="field">Modifier<select name="scope" aria-label="Portée de la modification"><option value="occurrence" ${d.scope==='occurrence'?'selected':''}>Ce jour uniquement</option><option value="series" ${d.scope==='series'?'selected':''}>Toute la série</option></select></label>${d.scope==='series'?'<p class="status notice">Toute la série sera reprogrammée à partir de la date choisie. Les jours déplacés ou supprimés individuellement seront réinitialisés.</p>':'<p class="status notice">Seul ce jour sera modifié. Les autres occurrences gardent leur horaire et leurs actions.</p>'}`;}
+  _scopeHtml(d){return `<label class="field">Modifier<select name="scope" aria-label="Portée de la modification"><option value="occurrence" ${d.scope==='occurrence'?'selected':''}>Ce jour uniquement</option><option value="series" ${d.scope==='series'?'selected':''}>Toute la série</option></select></label>${d.scope==='series'?`<p class="status notice">La série sera modifiée à partir de la date choisie. Les jours déjà déplacés ou supprimés sont conservés.</p>${d.seriesSnapshot && !d.seriesSnapshot.complete?'<p class="status notice">Ancienne série : importez une fois le fichier ICS du calendrier pour reprendre aussi les jours déjà supprimés.</p><label class="field">Importer les exceptions existantes<input type="file" name="series_import" accept=".ics,text/calendar"></label>':''}${d.seriesError?`<p class="status error">${esc(d.seriesError.message)}</p>`:''}`:'<p class="status notice">Seul ce jour sera modifié. Les autres occurrences gardent leur horaire et leurs actions.</p>'}`;}
   _formHtml(){
-    const d=this._draft,existing=!!d.uid,isRecurring=!!d.rrule || !!d.recurrence_id;
+    const d=this._draft,existing=!!d.uid,isRecurring=recurring(d);
     if(d.calendarOnly)return this._calendarOnlyFormHtml();
     if(d.readonly)return `<section class="panel"><h2 translate="no">${esc(d.summary)}</h2><p>Ce calendrier ne fournit pas d’identifiant modifiable pour cet événement. Utilisez un calendrier local permettant sa modification.</p>${this._button('Fermer','cancel')}</section>`;
     return `<form><div class="toolbar"><h2>${existing?'Modifier cette programmation':'Nouvelle programmation'}</h2>${this._button('Fermer','cancel')}</div>${existing && isRecurring?this._scopeHtml(d):''}<label class="field">Nom<input required name="summary" maxlength="120" value="${esc(d.summary)}" placeholder="Ex. Chauffe atelier ou ouverture barrière"></label><div class="grid2"><label>${existing && d.scope==='series'?'Date de début de la série':existing?'Date de cette occurrence':'Date de début'}<input required type="date" name="date" value="${d.date}"></label>${!existing?`<label>Répétition<select name="repeat"><option value="once" ${d.repeat==='once'?'selected':''}>Une seule fois</option><option value="weekly" ${d.repeat==='weekly'?'selected':''}>Chaque semaine</option></select></label>`:'<p class="hint">Pour déplacer, changez la date ou l’heure. Vous pouvez aussi glisser la programmation sur le calendrier.</p>'}</div>${((!existing && d.repeat==='weekly') || (existing && d.scope==='series' && /(?:^|;)FREQ=WEEKLY(?:;|$)/i.test(d.seriesRule)))?`<div class="field"><label>Jours habituels</label><div class="weekdays">${[1,2,3,4,5,6,0].map(i=>`<label class="check"><input type="checkbox" data-weekday="${i}" ${d.days.includes(i)?'checked':''}>${this._weekday(i)}</label>`).join('')}</div><p class="hint">Créez autant de programmations que nécessaire pour des horaires différents.</p></div>`:''}<h3>Au début</h3>${this._timeSelect('start',`${d.start_hour}:${d.start_minute}`)}${this._actionsHtml('start_actions')}${this._button('+ Ajouter une action','add-start')}<label class="check field"><input name="has_end" type="checkbox" ${d.has_end?'checked':''}>Prévoir une heure et des actions de fin</label>${d.has_end?`<h3>À la fin</h3>${this._timeSelect('end',`${d.end_hour}:${d.end_minute}`)}<p class="hint">Si l’heure de fin précède l’heure de début, le créneau se termine le lendemain.</p>${this._actionsHtml('end_actions')}${this._button('+ Ajouter une action à la fin','add-end')}`:'<p class="hint">Action ponctuelle : adapté au démarrage des Frech, sans arrêt programmé.</p>'}<div class="grid2 field"><label>Couleur<input type="color" name="color" value="${eventColor(d.color)}"></label><label>Note facultative<textarea name="note" rows="2">${esc(d.note)}</textarea></label></div>${!this._config.demo && !this._snapshot.ready?'<p class="status">Le premier enregistrement préparera l’exécution du calendrier en mode test. Un administrateur est nécessaire.</p>':''}<div class="buttons"><button class="primary" type="submit" ${this._busy?'disabled':''}>${this._busy?'Enregistrement…':d.scope==='series'?'Enregistrer la série':'Enregistrer'}</button>${this._button('Annuler','cancel')}${existing?this._button(isRecurring?'Supprimer ce jour':'Supprimer','delete','class="danger"'):''}</div>${existing && isRecurring?`<details><summary>Toute la série</summary><p class="hint">La suppression de série retire toutes ses occurrences, y compris les jours déplacés.</p>${this._button('Supprimer toute la série','delete-series','class="danger"')}</details>`:''}${d.deleteScope?`<div class="status"><p>${d.deleteScope==='series'?'Supprimer toutes les occurrences de cette série ?':'Supprimer uniquement cette occurrence ?'}</p>${this._button('Confirmer la suppression','confirm-delete','class="danger"')} ${this._button('Conserver','keep')}</div>`:''}</form>`;
@@ -153,14 +146,31 @@ class PlanningCard extends HTMLElement {
   }
   _change(event){
     const el=event.target;if(this._deviceChange(el))return;const d=this._draft;if(!d)return;
+    if(el.name==='series_import'){this._importSeries(el.files?.[0],d);return;}
     const rowEl=el.closest('.action-row');
     if(rowEl){const row=d[rowEl.dataset.phase][Number(rowEl.dataset.index)];if(el.hasAttribute('data-target')){row.target=el.value;row.op=defaultOperation(this._record(row.target));this._render();}else if(el.hasAttribute('data-operation'))row.op=el.value;return;}
     if(el.dataset.weekday!==undefined){d.days=Array.from(this.shadowRoot.querySelectorAll('[data-weekday]:checked'),e=>Number(e.dataset.weekday));return;}
     if(!el.name)return;d[el.name]=el.type==='checkbox'?el.checked:el.value;
     if(el.name==='date' && !d.uid && d.repeat==='once' && /^\d{4}-\d{2}-\d{2}$/.test(d.date))d.days=[weekday(d.date)];
     if(el.name==='has_end' && d.has_end && !d.end_actions.length)d.end_actions=d.start_actions.filter(a=>a.target && oppositeOperation(a.op) && Object.hasOwn(operationsFor(this._record(a.target)),oppositeOperation(a.op))).map(a=>({target:a.target,op:oppositeOperation(a.op)}));
+    if(el.name==='scope' && d.scope==='series')this._captureSeries(d);
     if(['repeat','has_end','scope'].includes(el.name))this._render();
   }
+  _captureSeries(d){
+    if(d.seriesSnapshot)return Promise.resolve(d.seriesSnapshot);
+    if(d.seriesPending)return d.seriesPending;
+    d.seriesPending=(async()=>{
+      try{
+        const snapshot=await this._seriesStore.read(d.original,this._events),row=this._config.demo?this._demoRows.find(row=>row.uid===snapshot.master_uid):null;
+        if(row && !snapshot.complete){snapshot.complete=true;snapshot.model={dtstart:row.start,dtend:row.end,summary:row.summary,description:row.description,rrule:row.rrule};for(const rid of row.deleted || [])snapshot.exceptions[`${rid.slice(0,4)}-${rid.slice(4,6)}-${rid.slice(6,8)}`]={deleted:true};for(const [rid,item] of Object.entries(row.exceptions || {}))snapshot.exceptions[`${rid.slice(0,4)}-${rid.slice(4,6)}-${rid.slice(6,8)}`]={event:{dtstart:item.start,dtend:item.end,summary:item.summary,description:item.description},uid:row.uid,native:true,recurrence_id:rid};}
+        d.seriesSnapshot=snapshot;d.series_revision=snapshot._raw || snapshot.id;
+        if(!d.seriesRule){d.seriesRule=snapshot.model.rrule;d.days=ruleDays(d.seriesRule,weekday(d.date));}
+        return snapshot;
+      }catch(error){d.seriesError=error;return null;}
+      finally{if(this._draft===d && d.scope==='series' && !this._busy)this._render();}
+    })();return d.seriesPending;
+  }
+  async _importSeries(file,d){if(!file)return;try{const snapshot=await this._captureSeries(d);if(!snapshot)throw d.seriesError;d.seriesSnapshot=this._seriesStore.import(snapshot,await file.text());d.seriesRule=d.seriesSnapshot.model.rrule;d.days=ruleDays(d.seriesRule,weekday(d.date));d.seriesError=null;if(this._draft===d)this._error='';}catch(error){d.seriesError=error;}if(this._draft===d)this._render();}
   _draftDates(d){
     const time=`${d.start_hour}:${d.start_minute}`;
     if(d.calendarOnly){const first=d.scope==='series' && /(?:^|;)FREQ=WEEKLY(?:;|$)/i.test(d.seriesRule)?dayOf(weeklyStart(d.date,time,d.days,this._zone,Date.now(),true),this._zone):d.date;return shiftedOccurrence(d.original,first,Number(d.start_hour)*60+Number(d.start_minute),this._zone);}
@@ -180,9 +190,13 @@ class PlanningCard extends HTMLElement {
     const row=this._demoRows.find(x=>x.uid===payload.uid);
     if(payload.type.endsWith('/delete')){if(payload.recurrence_id){row.deleted=[...(row.deleted || []),payload.recurrence_id];if(row.exceptions)delete row.exceptions[payload.recurrence_id];}else this._demoRows=this._demoRows.filter(x=>x.uid!==payload.uid);return;}
     const saved={...payload.event,start:payload.event.dtstart,end:payload.event.dtend,uid:payload.uid || newEventId()};
-    if(payload.recurrence_id){row.exceptions={...row.exceptions,[payload.recurrence_id]:saved};}else if(row){Object.assign(row,saved);if(payload.event.rrule){row.exceptions={};row.deleted=[];}}else this._demoRows.push(saved);
+    if(payload.recurrence_id){row.exceptions={...row.exceptions,[payload.recurrence_id]:{...saved,rrule:''}};}else if(row){if(saved.rrule && (saved.start!==row.start || saved.rrule!==row.rrule)){row.exceptions={};row.deleted=[];}Object.assign(row,saved);}else this._demoRows.push(saved);
   }
   async _write(payload,draft){
+    if(payload.type==='planning-series-update')return this._seriesStore.update(this._draft.seriesSnapshot,payload.event);
+    const original=draft?.original || this._draft?.original || this._events.find(e=>e.uid===payload.uid && (!payload.recurrence_id || e.recurrence_id===payload.recurrence_id));
+    if(payload.type.endsWith('/delete') && this._draft?.deleteScope==='series' && original)return this._seriesStore.deleteSeries(original);
+    if(original && recurring(original) && (payload.type.endsWith('/update') || payload.type.endsWith('/delete')))return this._seriesStore.occurrence(original,payload);
     if(this._config.demo){this._demoWrite(payload);return;}
     try{await this._hass.callWS(payload);}catch(error){
       if(!draft)throw error;
@@ -196,7 +210,7 @@ class PlanningCard extends HTMLElement {
     try{
       if(!this._config.demo && d.pendingCreate){const pending=d.pendingCreate,rows=await this._fetch(shiftDay(dayOf(pending.start,this._zone),-1),shiftDay(dayOf(pending.end,this._zone),2));const found=rows.filter(e=>e.meta?.id===d.event_id);if(found.length){if(!found.some(e=>e.start===pending.start && e.end===pending.end && e.description===pending.description))throw new Error('Une programmation avec cet identifiant existe déjà. Actualisez avant de recommencer.');this._draft=null;this._notice='La première sauvegarde est déjà enregistrée. Ouvrez la programmation pour la modifier.';await this._load();return;}}
       if(!d.summary.trim())throw new Error('Donnez un nom à la programmation.');
-      if(d.scope==='series'){if(!d.seriesRule)throw new Error('Règle de répétition indisponible. Ouvrez une occurrence habituelle.');d.rrule=editedWeeklyRule(d.seriesRule,d.days);}
+      if(d.scope==='series'){if(!await this._captureSeries(d))throw d.seriesError;if(!d.seriesSnapshot.complete)throw new Error('Importez une fois le fichier ICS pour conserver toutes les exceptions de cette ancienne série.');if(!d.seriesRule)throw new Error('Règle de répétition indisponible. Ouvrez une occurrence habituelle.');d.rrule=editedWeeklyRule(d.seriesRule,d.days);}
       Object.assign(d,this._draftDates(d));
       if(d.calendarOnly){if(!this._config.demo && Date.parse(d.start)<Date.now()+20*60000)throw new Error('Prévoyez au moins 20 minutes avant le début.');await this._freshForIfLive(d.original,d,d.scope);const description=d.legacy?(d.note===(d.legacy.note || '') && eventColor(d.color)===eventColor(d.legacy.color)?d.original.description:JSON.stringify({...d.legacy,note:d.note,color:eventColor(d.color)})):d.note;await this._write(calendarEditPayload(d.original,{...d,description},d.scope),d);this._draft=null;this._notice=d.scope==='series'?'La série a été reprogrammée.':'Cette occurrence a été modifiée. Ses actions existantes sont conservées.';await this._load();return;}
       const initialIssue=validateSchedule(d,this._choices().map(r=>({...r,id:r.value})),Date.now(),this._config.demo);if(initialIssue)throw new Error(initialIssue);

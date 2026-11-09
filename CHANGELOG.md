@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0 — 2026-11-09
+
+- Modification de série conservant les jours déjà déplacés et supprimés, sans limite au mois affiché.
+- Conservation entièrement dans la carte, avec un journal partagé dans le même calendrier et uniquement les API natives Home Assistant.
+- Les exceptions conservent leurs dates, horaires et actions ; les autres occurrences suivent les nouveaux réglages.
+- Conservation après plusieurs modifications, changement des jours habituels et relecture du fichier ICS.
+- Nouvelles séries suivies automatiquement ; import ICS dans le formulaire pour reprendre les exceptions anciennes que l’API ne fournit pas.
+- Sauvegarde préparée avant remplacement, événements temporaires inactifs et reprise persistante après interruption.
+- Glisser-déposer toujours limité à une occurrence ; aperçu local et traductions adaptés.
+- Aucun complément, intégration ou conteneur à installer ; blueprint d’exécution inchangé.
+
 ## 0.8.0 — 2026-11-09
 
 - Choix explicite entre « Ce jour uniquement » et « Toute la série » dans le formulaire de modification.

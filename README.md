@@ -3,8 +3,10 @@
 Une carte de calendrier pour choisir **quand** et **quoi faire** : démarrer des
 Frech, ouvrir une barrière, allumer une chauffe puis l’éteindre.
 
-**Version 0.8.0** : modification d’un jour ou d’une série,
-couleurs des anciennes programmations corrigées et calendrier plus compact.
+**Version 0.9.0** : les jours déplacés et supprimés
+sont conservés directement par la carte, avec un [journal partagé dans le calendrier](docs/planning-series.md).
+Aucun complément à installer. Un import ICS unique permet de reprendre les exceptions
+des anciennes séries ; les nouvelles sont suivies automatiquement.
 
 Fenêtres centrées à l’écran, déplacement souris/tactile, actions ponctuelles ou créneaux avec début/fin,
 déplacement et suppression d’une seule occurrence. Le planning commence sans programmation.
@@ -38,10 +40,18 @@ couleurs et, pour une programmation hebdomadaire Planning, les jours habituels.
 
 **Toute la série** remplace la série à partir de la **Date de début de la série**
 affichée dans le formulaire. Vérifier cette date avant **Enregistrer la série**.
-Le calendrier local réinitialise alors les jours déplacés ou supprimés individuellement ;
-un avertissement le rappelle avant l’enregistrement. Les limites existantes de répétition
-(`COUNT` ou `UNTIL`) restent dans la règle, mais les occurrences sont recalculées depuis
-la nouvelle date de départ.
+Les jours déjà déplacés conservent leurs dates,
+heures et actions particulières ; les jours supprimés restent absents. Les autres
+occurrences suivent les nouveaux réglages. La carte mémorise les exceptions dans
+le même calendrier. Les nouvelles séries sont suivies automatiquement. Pour une
+ancienne série, le formulaire propose un **import ICS unique** afin de récupérer
+aussi les suppressions que l’API ne montre plus. Sans cet historique complet,
+la carte refuse de remplacer la série. Une sauvegarde interrompue est reprise
+au rechargement. [Fonctionnement et reprise de l’existant](docs/planning-series.md).
+
+Les limites existantes de répétition
+(`COUNT` ou `UNTIL`) restent dans la règle ; les occurrences sont recalculées depuis
+la date de départ choisie.
 
 Glisser une programmation vers une date en vue **Mois** conserve son heure et sa
 durée. En vue **Semaine**, la position verticale choisit l’heure par pas de 10 minutes.
@@ -69,7 +79,7 @@ peuvent pas être déplacés ou supprimés, afin de conserver leur extinction/fe
 
 Pour la version publiée : HACS → Dépôts personnalisés →
 `https://github.com/Euro-Locks-Belgium/ha-planning-card`, catégorie Dashboard.
-Mettre à jour **Planning** vers **v0.8.0**, puis recharger complètement le navigateur
+Mettre à jour **Planning** vers **v0.9.0**, puis recharger complètement le navigateur
 ou l’application Home Assistant.
 La ressource est `/hacsfiles/ha-planning-card/ha-planning-card.js`, type Module JavaScript.
 Le type historique `custom:ha-planning-chauffe-card` reste disponible.
