@@ -12,6 +12,13 @@ export const ACTION_TYPES = {
   input_button: {label:'Bouton', operations:{press:'Appuyer'}},
   frech: {label:'Frech', operations:{start:'Démarrer avec contrôle',off:'Éteindre'}},
 };
+// UI fixes reuse the already published, unchanged execution blueprint.
+export const ACTION_BLUEPRINT_VERSION='0.6.0';
+export function selectedPlanningEntities(input=[]){
+  if(!Array.isArray(input) || input.length>200)throw new Error('La sélection doit contenir au maximum 200 entités.');
+  for(const entity of input)if(typeof entity!=='string' || !/^[a-z_]+\.[a-z0-9_]+$/.test(entity) || !Object.hasOwn(ACTION_TYPES,entity.split('.')[0]))throw new Error('Un appareil sélectionné est incompatible.');
+  return [...new Set(input)];
+}
 export function targetEntity(record) { return record.entity_id || record.switch_entity || record.script_entity || ''; }
 export function operationsFor(record) { return ACTION_TYPES[record?.type]?.operations || {}; }
 export function defaultOperation(record) { return Object.keys(operationsFor(record))[0] || ''; }
@@ -29,7 +36,7 @@ export function validateActionRecord(record) {
   return '';
 }
 export function normalizePlanningConfig(input) {
-  const config={title:'Planning',calendar:'',demo:!input.calendar,...input,appearance:normalizeAppearance(input.appearance)};
+  const config={title:'Planning',calendar:'',demo:!input.calendar,...input,entities:selectedPlanningEntities(input.entities),appearance:normalizeAppearance(input.appearance)};
   if(config.calendar && !/^calendar\.[a-z0-9_]+$/.test(config.calendar)) throw new Error('Choisissez un calendrier Home Assistant.');
   if(config.execution_automation && !/^automation\.[a-z0-9_]+$/.test(config.execution_automation)) throw new Error('Automatisation invalide.');
   delete config.groups; delete config.closure_calendar; delete config.devices;
@@ -65,6 +72,11 @@ export function schedulePayload(draft) {
   return {type:`calendar/event/${draft.uid?'update':'create'}`,entity_id:draft.calendar,...(draft.uid?occurrenceSelector(draft,draft.scope):{}),event};
 }
 export function occurrenceDeletePayload(event,scope='occurrence') {return {type:'calendar/event/delete',entity_id:event.calendar,...occurrenceSelector(event,scope)};}
+export function calendarEditPayload(original,changes){
+  const event={dtstart:changes.start,dtend:changes.end,summary:changes.summary ?? original.summary,description:changes.description ?? original.description ?? ''};
+  if(typeof original.location==='string')event.location=original.location;
+  return {type:'calendar/event/update',entity_id:original.calendar,...occurrenceSelector(original),event};
+}
 export function wallDuration(event,zone) {return (Date.parse(`${localMinute(event.end,zone)}:00Z`)-Date.parse(`${localMinute(event.start,zone)}:00Z`))/60000;}
 export function shiftedOccurrence(event,date,minute,zone) {
   const startWall=`${date}T${minute===undefined?localMinute(event.start,zone).slice(11):`${String(Math.floor(minute/60)).padStart(2,'0')}:${String(minute%60).padStart(2,'0')}`}`;

@@ -3,8 +3,9 @@
 Une carte de calendrier pour choisir **quand** et **quoi faire** : démarrer des
 Frech, ouvrir une barrière, allumer une chauffe puis l’éteindre.
 
-**Version 0.6.0** : actions ponctuelles ou créneaux avec début/fin, déplacement et
-suppression d’une seule occurrence. Le planning commence sans programmation.
+**Version 0.6.1** : fenêtres centrées à l’écran, déplacement souris/tactile et
+sélection des appareils corrigés. Actions ponctuelles ou créneaux avec début/fin,
+déplacement et suppression d’une seule occurrence. Le planning commence sans programmation.
 
 ## Un créneau, ses actions
 
@@ -32,11 +33,19 @@ Glisser une programmation vers une date en vue **Mois** conserve son heure et sa
 durée. En vue **Semaine**, la position verticale choisit l’heure par pas de 10 minutes.
 Le déplacement modifie **uniquement cette occurrence**, même dans une série.
 Cliquer puis modifier la date/l’heure permet la même opération au clavier ou sur mobile.
+Le formulaire s’ouvre au centre de l’écran, avec son propre défilement. Sur un écran
+tactile, glisser la poignée **⠿** de l’événement ; toucher son libellé ouvre la modification.
 
 Cliquer sur une programmation puis **Supprimer ce jour** retire une seule occurrence.
 **Toute la série → Supprimer toute la série** est une action distincte avec confirmation.
 Pour changer tous les horaires d’une série, créer le nouvel horaire puis supprimer
-l’ancienne série. Les événements externes restent en lecture seule.
+l’ancienne série.
+
+Les anciens événements et ceux créés directement dans le calendrier peuvent changer
+de date, d’heure, de nom ou de note sans changer leurs actions existantes. Leur durée
+est conservée. Le formulaire **Actions et appareils → Configurer les actions** permet
+de leur associer explicitement les nouvelles actions Planning. Un événement sans
+identifiant modifiable reste en lecture seule.
 
 Le calendrier doit fournir `uid` et `recurrence_id` pour modifier une occurrence.
 En leur absence, la carte refuse l’opération plutôt que de toucher à toute la série.
@@ -48,7 +57,7 @@ peuvent pas être déplacés ou supprimés, afin de conserver leur extinction/fe
 
 Pour la version publiée : HACS → Dépôts personnalisés →
 `https://github.com/Euro-Locks-Belgium/ha-planning-card`, catégorie Dashboard.
-Mettre à jour **Planning** vers **v0.6.0**, puis recharger complètement le navigateur
+Mettre à jour **Planning** vers **v0.6.1**, puis recharger complètement le navigateur
 ou l’application Home Assistant.
 La ressource est `/hacsfiles/ha-planning-card/ha-planning-card.js`, type Module JavaScript.
 Le type historique `custom:ha-planning-chauffe-card` reste disponible.
@@ -76,7 +85,9 @@ enregistre la première programmation. La carte prépare le blueprint
 `blueprints/planning-actions.yaml`, une automatisation pour ce calendrier et sa
 liste d’actions autorisées. Aucun jeton à saisir : la session HA est utilisée.
 
-La carte importe le blueprint de la même release lors de la préparation. Il est
+Cette correction d’interface conserve le blueprint d’exécution de la v0.6.0.
+Une installation déjà préparée n’a pas besoin de réimporter le blueprint.
+La carte importe ce blueprint lors de la préparation d’une nouvelle installation. Il est
 aussi disponible pour un import manuel :
 [Planning — actions au début et à la fin](https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/v0.6.0/blueprints/planning-actions.yaml).
 HACS met à jour la carte ; il ne modifie pas vos automatisations existantes.
@@ -91,6 +102,24 @@ modifient les horaires/actions avec les droits du calendrier. Les paramètres te
 restent dans l’automatisation administrateur ; les événements ne contiennent que des
 identifiants et des opérations prédéfinies.
 
+### Choisir et configurer les appareils
+
+- **Modifier la carte → Appareils proposés dans les programmations** : rechercher et
+  cocher les entités à proposer sur cette carte. Sans sélection, tous les appareils
+  compatibles sont proposés à un administrateur. Cette sélection ne donne pas de
+  droits supplémentaires aux utilisateurs classiques.
+- **Réglages → Appareils du planning → Ajouter un appareil** : enregistrer un appareil
+  partagé, son nom et son entité. Le type **Frech** permet de choisir son relais,
+  son entrée de contrôle, son script existant et son numéro. **Modifier** permet
+  ensuite de changer ce profil sans changer son identifiant dans les programmations.
+- Si une sélection d’appareils est active dans l’éditeur de carte, y cocher aussi
+  le nouvel appareil pour le proposer sur cette carte.
+- **Modifier la carte → Exécution existante / migration** : choisir une ancienne
+  automatisation Planning pour retrouver son catalogue et ses profils Frech.
+
+Les fenêtres s’ouvrent à l’écran et se ferment avec **Fermer**, **Annuler** ou Échap.
+Une modification de profil qui affecterait une action de fin en cours est refusée.
+
 La carte publie la liste des noms dans un événement technique daté du 1er janvier 2000,
 dans le même calendrier. Ce n’est pas une programmation d’appareil. Une configuration
 ne se modifie pas pendant qu’une séquence est en cours. Les changements concurrents
@@ -104,11 +133,11 @@ existante pour que la préparation retrouve son catalogue Frech/appareils.
 
 Les profils de `planning-devices.yaml` et `planning-frech.yaml` sont repris avec
 leurs identifiants, relais, retours, numéros et scripts. Les anciennes programmations
-avec une sélection d’appareils connue peuvent être déplacées/modifiées : seule
-l’occurrence choisie passe au nouveau format. Les autres occurrences restent
-gérées par l’ancienne automatisation. Les événements sans association exploitable
-restent visibles et en lecture seule ; les recréer en choisissant explicitement
-leurs actions. Une ancienne carte utilisant plusieurs calendriers doit être
+peuvent être déplacées ou modifiées pour leur horaire en conservant leur format
+et leurs associations. Pour changer leurs actions, ouvrir **Configurer les actions**
+et choisir les appareils : seule l’occurrence sélectionnée passe au nouveau format.
+Les autres occurrences restent gérées par l’ancienne automatisation.
+Une ancienne carte utilisant plusieurs calendriers doit être
 reconfigurée avec un calendrier unique ; ses autres calendriers restent intacts.
 
 Le nouvel exécuteur ignore les événements de l’ancien format et les anciens
@@ -159,6 +188,7 @@ python -m pip install -r test/requirements.txt
 python -m unittest discover -s test -p '*blueprint_test.py'
 python -m unittest discover -s test -p 'native_calendar_test.py'
 node test/browser.mjs
+node test/interaction-browser.mjs
 ```
 
 Le parcours navigateur utilise Playwright/Chromium ; `PLANNING_NODE_MODULES` permet

@@ -1,5 +1,5 @@
 window.setupPlanningTest=({demo=false,admin=true}={})=>{
-  const card=document.querySelector('ha-planning-card'),calendar='calendar.test';let rows=[],failRead=false,failWrite=false,loseReply=false,loseRead=false;
+  const card=window.__planningCard || document.querySelector('ha-planning-card'),calendar='calendar.test';let rows=[],failRead=false,failWrite=false,loseReply=false,loseRead=false;
   const ws=[],apiWrites=[],reads=[];
   let config={id:'test-actions',alias:'Planning test',use_blueprint:{path:'test/planning-actions.yaml',input:{planning_calendar:calendar,test_mode:true,action_catalog:{frech_1:{name:'Frech 1',type:'frech',enabled:true,switch_entity:'switch.frech',script_entity:'script.start_frech',input_entity:'binary_sensor.frech',frech_number:1}}}}};
   const hass={config:{time_zone:'Europe/Brussels'},user:{is_admin:admin},states:{},async callApi(method,path,body){

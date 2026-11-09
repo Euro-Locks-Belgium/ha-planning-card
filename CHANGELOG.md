@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.1 — 2026-11-09
+
+- Formulaires et réglages dans une fenêtre native centrée au-dessus du tableau de bord, avec défilement interne, fermeture Échap et focus conservé.
+- Messages de sauvegarde ou de refus visibles à l’écran.
+- Déplacement à la souris et au tactile avec poignée, aperçu de destination et défilement automatique.
+- Modification et déplacement des anciens événements sans conversion imposée : description, associations et autres occurrences conservées.
+- Un déplacement d’horaire ne nécessite plus de préparer l’exécution ou de revalider le catalogue d’appareils.
+- Réglages → Appareils du planning : ajout/modification d’entités simples et de profils Frech avec script/entrée/numéro.
+- Éditeur de carte : sélection recherchable des appareils proposés et accès à l’automatisation existante pour la migration.
+- Tests dans des composants imbriqués avec transformation et découpage, ainsi qu’avec de vrais événements tactiles du navigateur.
+
 ## 0.6.0 — 2026-11-09
 
 - Formulaire centré sur le créneau : actions ponctuelles ou actions distinctes de début et de fin.

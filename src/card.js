@@ -1,21 +1,19 @@
 import {esc,dayOf,shiftDay,weekday,toInstant,localMinute,viewRange,eventColor,colorText,newEventId} from './model.js';
 import {visibleWeekdays} from './views.js';
-import {ACTION_TYPES,normalizePlanningConfig,normalizeSchedule,simpleActionRecord,targetEntity,operationsFor,defaultOperation,oppositeOperation,recurring,occurrenceSelector,schedulePayload,occurrenceDeletePayload,shiftedOccurrence,mutationIssue,validateSchedule,weeklyStart,scheduleFingerprint,packWeekEvents} from './actions-model.js';
+import {ACTION_TYPES,ACTION_BLUEPRINT_VERSION,normalizePlanningConfig,normalizeSchedule,simpleActionRecord,targetEntity,operationsFor,defaultOperation,oppositeOperation,recurring,occurrenceSelector,schedulePayload,calendarEditPayload,occurrenceDeletePayload,shiftedOccurrence,mutationIssue,validateSchedule,weeklyStart,scheduleFingerprint,packWeekEvents} from './actions-model.js';
 import {PlanningActionStore,actionRegistry} from './action-store.js';
 import {PLANNING_STYLE} from './planning-style.js';
+import {PlanningInteractions,INTERACTION_STYLE} from './interactions.js';
+import {PlanningDeviceSettings,DEVICE_SETTINGS_STYLE} from './device-settings.js';
 
 class PlanningCard extends HTMLElement {
   constructor(){
     super();this.attachShadow({mode:'open'});this._events=[];this._demoRows=[];this._snapshot={records:[],ready:false,test_mode:true};this._generation=0;
     this.shadowRoot.addEventListener('click',e=>this._click(e));
     this.shadowRoot.addEventListener('change',e=>this._change(e));
-    this.shadowRoot.addEventListener('input',e=>{if(e.target.name && this._draft)this._draft[e.target.name]=e.target.value;});
-    this.shadowRoot.addEventListener('submit',e=>{e.preventDefault();this._save();});
-    this.shadowRoot.addEventListener('dragstart',e=>{const el=e.target.closest('[data-event]'),item=this._events.find(x=>x.key===el?.dataset.event);if(!item || !this._meta(item) || this._busy){e.preventDefault();return;}this._dragKey=item.key;e.dataTransfer.setData('text/plain',item.key);e.dataTransfer.effectAllowed='move';});
-    this.shadowRoot.addEventListener('dragover',e=>{const target=e.target.closest('[data-drop]');if(target && this._dragKey){e.preventDefault();e.dataTransfer.dropEffect='move';target.classList.add('drop-over');}});
-    this.shadowRoot.addEventListener('dragleave',e=>e.target.closest('[data-drop]')?.classList.remove('drop-over'));
-    this.shadowRoot.addEventListener('dragend',()=>{this._dragKey=null;this.shadowRoot.querySelectorAll('.drop-over').forEach(x=>x.classList.remove('drop-over'));});
-    this.shadowRoot.addEventListener('drop',e=>{const target=e.target.closest('[data-drop]');if(!target)return;e.preventDefault();const key=this._dragKey;this._dragKey=null;const item=this._events.find(x=>x.key===key);if(!item)return;let minute;if(target.classList.contains('week-day'))minute=Math.max(0,Math.min(1430,Math.round((e.clientY-target.getBoundingClientRect().top)/48*60/10)*10));this._move(item,target.dataset.drop,minute);});
+    this.shadowRoot.addEventListener('input',e=>{if(this._deviceChange(e.target))return;if(e.target.name && this._draft)this._draft[e.target.name]=e.target.value;});
+    this.shadowRoot.addEventListener('submit',e=>{e.preventDefault();if(e.target.hasAttribute('data-device-form'))this._saveDevice();else this._save();});
+    this._installInteractions();
   }
   static getConfigElement(){return document.createElement('ha-planning-card-editor');}
   static getStubConfig(){return {type:'custom:ha-planning-card',title:'Planning',demo:true};}
@@ -23,10 +21,11 @@ class PlanningCard extends HTMLElement {
   getGridOptions(){return {columns:24,min_columns:6,rows:12,min_rows:8};}
   setConfig(config){this._config=normalizePlanningConfig(config);this._generation++;this._initialized=false;this._init();}
   set hass(value){this._hass=value;this._init();}
-  connectedCallback(){if(!this._timer)this._timer=setInterval(()=>{if(this.isConnected && !this._draft && !this._settings && !this._busy)this._load();},60000);this._init();}
-  disconnectedCallback(){clearInterval(this._timer);this._timer=null;}
+  connectedCallback(){if(!this._timer)this._timer=setInterval(()=>{if(this.isConnected && !this._draft && !this._settings && !this._busy && !this._pointer?.active)this._load();},60000);this._init();}
+  disconnectedCallback(){clearInterval(this._timer);clearTimeout(this._toastTimer);this._timer=null;this._clearPointer();}
   _init(){
     if(!this._config || !this._hass || this._initialized)return;
+    this._clearPointer();this._deviceDraft=null;
     this._initialized=true;this._zone=this._hass.config?.time_zone || 'Europe/Brussels';this._selected=dayOf(Date.now(),this._zone);this._month=this._selected.slice(0,7);this._view=this._config.appearance.default_view;this._draft=null;this._settings=false;this._events=[];this._error='';this._loaded=!!this._config.demo;this._loading=false;this._snapshot={records:[],ready:false,test_mode:true};
     this._store=new PlanningActionStore(()=>this._hass,this._config.calendar,this._config.execution_automation);
     this._render();this._load();
@@ -43,9 +42,10 @@ class PlanningCard extends HTMLElement {
   _label(day){return new Intl.DateTimeFormat('fr-BE',{timeZone:'UTC',weekday:'short',day:'numeric',month:'short'}).format(new Date(`${day}T12:00Z`));}
   _record(id){if(id?.startsWith('entity:')){const entity=id.slice(7);return simpleActionRecord(entity,this._hass.states[entity]?.attributes?.friendly_name);}return this._snapshot.records.find(r=>r.id===id);}
   _choices(){
-    const records=this._snapshot.records.filter(r=>r.enabled!==false).map(r=>({...r,value:r.id}));
+    const selected=this._config.entities || [],current=new Set([...(this._draft?.start_actions || []),...(this._draft?.end_actions || [])].map(a=>a.target));
+    const records=this._snapshot.records.filter(r=>r.enabled!==false && (!selected.length || selected.includes(targetEntity(r)) || current.has(r.id))).map(r=>({...r,value:r.id}));
     if(this._config.demo || this._hass.user?.is_admin)for(const [entity,state] of Object.entries(this._hass.states || {})){
-      if(!ACTION_TYPES[entity.split('.')[0]] || records.some(r=>targetEntity(r)===entity))continue;
+      if(!ACTION_TYPES[entity.split('.')[0]] || (selected.length && !selected.includes(entity) && !current.has(`entity:${entity}`)) || this._snapshot.records.some(r=>targetEntity(r)===entity || (r.type==='frech' && r.script_entity===entity)))continue;
       try{records.push({...simpleActionRecord(entity,state.attributes?.friendly_name),value:`entity:${entity}`});}catch{/* Unsupported entities remain outside the action picker. */}
     }
     return records.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
@@ -85,7 +85,7 @@ class PlanningCard extends HTMLElement {
   _executionLabel(){if(this._config.demo)return 'Essai local · aucune commande envoyée';if(!this._snapshot.ready)return 'Choisissez vos horaires, puis préparez l’exécution dans Réglages.';if(!this._snapshot.config)return 'Programmations partagées · exécution gérée par Home Assistant';if(this._hass.states[this._store.automation]?.state==='off')return 'Automatisation désactivée dans Home Assistant';return this._snapshot.test_mode?'Mode test · notifications uniquement':'Exécution Home Assistant active';}
   _eventHtml(e,style=''){
     const meta=this._meta(e),names=meta?.start_actions.map(a=>this._record(a.target)?.name || a.target).join(', ') || '';
-    return `<button type="button" class="event ${meta?'':'external'}" data-event="${esc(e.key)}" draggable="${!!meta && !this._busy}" style="--event:${eventColor(meta?.color)};--event-text:${colorText(meta?.color)};${style}" title="${esc(`${e.summary} · ${this._time(e.start)}${meta?.has_end?' → '+this._time(e.end):''}`)}"><span>${this._time(e.start)}${meta?.has_end?' → '+this._time(e.end):''}${recurring(e)?' ↻':''}</span><strong>${esc(e.summary)}</strong>${this._config.appearance.show_device_names && names?`<small>${esc(names)}</small>`:''}</button>`;
+    return `<div class="event ${meta?'':'external'}" data-event="${esc(e.key)}" draggable="${!!e.uid && !this._busy}" style="--event:${eventColor(meta?.color || e.legacy?.color)};--event-text:${colorText(meta?.color || e.legacy?.color)};${style}"><button type="button" class="event-main" data-event="${esc(e.key)}" title="${esc(`${e.summary} · ${this._time(e.start)} · Cliquer pour modifier`)}"><span>${this._time(e.start)}${meta?.has_end?' → '+this._time(e.end):''}${recurring(e)?' ↻':''}</span><strong>${esc(e.summary)}</strong>${this._config.appearance.show_device_names && names?`<small>${esc(names)}</small>`:''}</button>${e.uid?`<button type="button" class="event-handle" data-move-handle="${esc(e.key)}" title="Glisser pour déplacer ce jour" aria-label="Déplacer ${esc(e.summary)}">⠿</button>`:''}</div>`;
   }
   _dayEvents(day){return this._events.filter(e=>dayOf(e.start,this._zone)===day && e.role!=='legacy-closure').sort((a,b)=>a.start.localeCompare(b.start));}
   _calendarHtml(){
@@ -106,23 +106,44 @@ class PlanningCard extends HTMLElement {
   }
   _formHtml(){
     const d=this._draft,existing=!!d.uid,isRecurring=!!d.rrule || !!d.recurrence_id;
-    if(d.readonly)return `<section class="panel"><h2>${esc(d.summary)}</h2><p>Cette programmation utilise l’ancien format ou provient d’une autre application. Elle est conservée et reste gérée par son automatisation actuelle.</p>${this._button('Fermer','cancel')}</section>`;
+    if(d.calendarOnly)return this._calendarOnlyFormHtml();
+    if(d.readonly)return `<section class="panel"><h2>${esc(d.summary)}</h2><p>Ce calendrier ne fournit pas d’identifiant modifiable pour cet événement. Utilisez un calendrier local permettant sa modification.</p>${this._button('Fermer','cancel')}</section>`;
     return `<form><div class="toolbar"><h2>${existing?'Modifier cette programmation':'Nouvelle programmation'}</h2>${this._button('Fermer','cancel')}</div>${existing && isRecurring?'<p class="status notice">Seul ce jour sera modifié. Les autres occurrences gardent leur horaire et leurs actions.</p>':''}<label class="field">Nom<input required name="summary" maxlength="120" value="${esc(d.summary)}" placeholder="Ex. Chauffe atelier ou ouverture barrière"></label><div class="grid2"><label>Date${existing?' de cette occurrence':' de début'}<input required type="date" name="date" value="${d.date}"></label>${!existing?`<label>Répétition<select name="repeat"><option value="once" ${d.repeat==='once'?'selected':''}>Une seule fois</option><option value="weekly" ${d.repeat==='weekly'?'selected':''}>Chaque semaine</option></select></label>`:'<p class="hint">Pour déplacer, changez la date ou l’heure. Vous pouvez aussi glisser la programmation sur le calendrier.</p>'}</div>${!existing && d.repeat==='weekly'?`<div class="field"><label>Jours habituels</label><div class="weekdays">${[1,2,3,4,5,6,0].map(i=>`<label class="check"><input type="checkbox" data-weekday="${i}" ${d.days.includes(i)?'checked':''}>${['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][i]}</label>`).join('')}</div><p class="hint">Créez autant de programmations que nécessaire pour des horaires différents.</p></div>`:''}<h3>Au début</h3>${this._timeSelect('start',`${d.start_hour}:${d.start_minute}`)}${this._actionsHtml('start_actions')}${this._button('+ Ajouter une action','add-start')}<label class="check field"><input name="has_end" type="checkbox" ${d.has_end?'checked':''}>Prévoir une heure et des actions de fin</label>${d.has_end?`<h3>À la fin</h3>${this._timeSelect('end',`${d.end_hour}:${d.end_minute}`)}<p class="hint">Si l’heure de fin précède l’heure de début, le créneau se termine le lendemain.</p>${this._actionsHtml('end_actions')}${this._button('+ Ajouter une action à la fin','add-end')}`:'<p class="hint">Action ponctuelle : adapté au démarrage des Frech, sans arrêt programmé.</p>'}<div class="grid2 field"><label>Couleur<input type="color" name="color" value="${eventColor(d.color)}"></label><label>Note facultative<textarea name="note" rows="2">${esc(d.note)}</textarea></label></div>${!this._config.demo && !this._snapshot.ready?'<p class="status">Le premier enregistrement préparera l’exécution du calendrier en mode test. Un administrateur est nécessaire.</p>':''}<div class="buttons"><button class="primary" type="submit" ${this._busy?'disabled':''}>${this._busy?'Enregistrement…':'Enregistrer'}</button>${this._button('Annuler','cancel')}${existing?this._button(isRecurring?'Supprimer ce jour':'Supprimer','delete','class="danger"'):''}</div>${existing && isRecurring?`<details><summary>Toute la série</summary><p class="hint">La suppression de série retire toutes ses occurrences, y compris les jours déplacés.</p>${this._button('Supprimer toute la série','delete-series','class="danger"')}</details>`:''}${d.deleteScope?`<div class="status"><p>${d.deleteScope==='series'?'Supprimer toutes les occurrences de cette série ?':'Supprimer uniquement cette occurrence ?'}</p>${this._button('Confirmer la suppression','confirm-delete','class="danger"')} ${this._button('Conserver','keep')}</div>`:''}</form>`;
   }
-  _settingsHtml(){return `<section class="panel"><div class="toolbar"><h2>Réglages du planning</h2>${this._button('Fermer','settings')}</div><p>Choisissez directement les appareils et les actions dans chaque programmation. Plusieurs actions peuvent partager le même horaire.</p><p class="status">${esc(this._executionLabel())}</p>${!this._config.demo && !this._snapshot.ready?this._button('Préparer l’exécution en mode test','setup','class="primary"'):''}<p class="hint">Un administrateur autorise une nouvelle entité lors de son premier enregistrement. Les autres utilisateurs peuvent ensuite la choisir librement. Les démarrages Frech déjà configurés conservent leur script de contrôle.</p><p class="hint">Pour les couleurs, la densité, la vue initiale et les week-ends : Modifier le tableau de bord → Modifier la carte → Personnalisation. La largeur se règle dans Disposition.</p></section>`;}
+  _calendarOnlyFormHtml(){
+    const d=this._draft;
+    return `<form><div class="toolbar"><h2>Modifier cette programmation</h2>${this._button('Fermer','cancel')}</div><p class="status notice">${recurring(d)?'Seul ce jour sera modifié. ':''}L’horaire peut être modifié sans changer les actions existantes.</p><label class="field">Nom<input required name="summary" maxlength="120" value="${esc(d.summary)}"></label><label class="field">Date de cette occurrence<input type="date" required name="date" value="${d.date}"></label><h3>Heure de début</h3>${this._timeSelect('start',`${d.start_hour}:${d.start_minute}`)}<p class="hint">La durée de l’événement et ses associations existantes sont conservées.</p><label class="field">${d.legacy?'Note':'Description'}<textarea name="note" rows="3">${esc(d.note)}</textarea></label><div class="buttons"><button type="submit" class="primary" ${this._busy?'disabled':''}>Enregistrer</button>${this._button('Annuler','cancel')}${this._button(recurring(d)?'Supprimer ce jour':'Supprimer','delete','class="danger"')}</div><details><summary>Actions et appareils</summary><p>Pour associer des appareils à cette programmation et utiliser les actions de début/fin de Planning :</p>${this._button('Configurer les actions','configure-actions')}</details>${recurring(d)?`<details><summary>Toute la série</summary>${this._button('Supprimer toute la série','delete-series','class="danger"')}</details>`:''}${d.deleteScope?`<div class="status"><p>${d.deleteScope==='series'?'Supprimer toute la série ?':'Supprimer uniquement ce jour ?'}</p>${this._button('Confirmer la suppression','confirm-delete','class="danger"')} ${this._button('Conserver','keep')}</div>`:''}</form>`;
+  }
+  _settingsHtml(){return `<section class="panel"><div class="toolbar"><h2>Réglages du planning</h2>${this._button('Fermer','settings')}</div><p class="status">${esc(this._executionLabel())}</p>${!this._config.demo && !this._snapshot.ready?this._button('Préparer l’exécution en mode test','setup','class="primary"'):''}${this._deviceSettingsHtml()}<p class="hint">Pour choisir les appareils affichés sur cette carte : Modifier la carte → Appareils proposés dans les programmations. Pour les couleurs et la vue initiale : Personnalisation.</p></section>`;}
   _render(){
     if(!this._initialized)return;
+    const dialogState=this._rememberDialog();
     const a=this._config.appearance,title=this._view==='week'?`Semaine du ${this._label(shiftDay(this._selected,-((weekday(this._selected)-a.first_day+7)%7)))}`:new Intl.DateTimeFormat('fr-BE',{timeZone:'UTC',month:'long',year:'numeric'}).format(new Date(`${this._month}-01T12:00Z`));
-    this.shadowRoot.innerHTML=`<style>${PLANNING_STYLE}</style><ha-card><main data-density="${a.density}" data-event-style="${a.event_style}" ${a.accent_color?`style="--accent:${a.accent_color}"`:''}><header class="toolbar"><h1>${esc(this._config.title)}</h1><div class="buttons">${this._button('+ Programmation','new','class="primary" '+(!this._config.demo && !this._loaded?'disabled':''))}${this._button('⚙ Réglages','settings')}</div></header><div class="status">${esc(this._executionLabel())}</div>${this._error?`<div role="alert" class="status error">${esc(this._error)}</div>`:''}${this._notice?`<div role="status" class="status notice">${esc(this._notice)}</div>`:''}<nav class="tabs" aria-label="Vue du calendrier">${Object.entries({month:'Mois',week:'Semaine',agenda:'Agenda'}).map(([id,label])=>this._button(label,`view-${id}`,`aria-pressed="${id===this._view}"`)).join('')}${this._button('Aujourd’hui','today')}</nav><div class="toolbar"><h2>${esc(title)}</h2><div class="buttons">${this._button('‹','previous','aria-label="Période précédente"')}${this._button('›','next','aria-label="Période suivante"')}${this._button('↻','refresh','aria-label="Actualiser"')}</div></div>${this._calendarHtml()}<p class="hint">Glissez une programmation pour déplacer seulement ce jour. En vue Semaine, l’heure se règle par pas de 10 minutes. Vous pouvez aussi cliquer pour modifier la date et l’heure.</p>${this._settings?this._settingsHtml():''}${this._draft?this._formHtml():''}</main></ha-card>`;
+    this.shadowRoot.innerHTML=`<style>${PLANNING_STYLE}${INTERACTION_STYLE}${DEVICE_SETTINGS_STYLE}</style><ha-card><main data-density="${a.density}" data-event-style="${a.event_style}" ${a.accent_color?`style="--accent:${a.accent_color}"`:''}><header class="toolbar"><h1>${esc(this._config.title)}</h1><div class="buttons">${this._button('+ Programmation','new','class="primary" '+(!this._config.demo && !this._loaded?'disabled':''))}${this._button('⚙ Réglages','settings')}</div></header><div class="status">${esc(this._executionLabel())}</div>${this._error?`<div role="alert" class="status error">${esc(this._error)}</div>`:''}${this._notice?`<div role="status" class="status notice">${esc(this._notice)}</div>`:''}<nav class="tabs" aria-label="Vue du calendrier">${Object.entries({month:'Mois',week:'Semaine',agenda:'Agenda'}).map(([id,label])=>this._button(label,`view-${id}`,`aria-pressed="${id===this._view}"`)).join('')}${this._button('Aujourd’hui','today')}</nav><div class="toolbar"><h2>${esc(title)}</h2><div class="buttons">${this._button('‹','previous','aria-label="Période précédente"')}${this._button('›','next','aria-label="Période suivante"')}${this._button('↻','refresh','aria-label="Actualiser"')}</div></div>${this._calendarHtml()}<p class="hint">Cliquez sur une programmation pour la modifier. Glissez la poignée ⠿ pour déplacer seulement ce jour. En vue Semaine, l’heure se règle par pas de 10 minutes. Vous pouvez aussi cliquer pour modifier la date et l’heure.</p>${this._settings?this._settingsHtml():''}${this._draft?this._formHtml():''}</main></ha-card>`;
+    const main=this.shadowRoot.querySelector('main'),panel=main.querySelector(':scope > form,:scope > .panel');
+    if(this._draft || this._settings || this._deviceDraft){
+      const dialog=document.createElement('dialog');dialog.className='planning-dialog';if(a.accent_color)dialog.style.setProperty('--accent',a.accent_color);dialog.setAttribute('aria-label',this._deviceDraft?'Appareil du planning':this._draft?'Programmation':'Réglages du planning');
+      const body=document.createElement('div');body.className='dialog-body';
+      if(this._deviceDraft){panel?.remove();body.innerHTML=this._deviceFormHtml();}else if(panel)body.append(panel);
+      const feedback=main.querySelector('[role=alert]') || main.querySelector('[role=status]');if(feedback)body.prepend(feedback);
+      body.querySelectorAll('h2').forEach(h=>h.tabIndex=-1);dialog.append(body);this.shadowRoot.append(dialog);
+    }else if(this._error || this._notice){
+      main.querySelector('[role=alert]')?.remove();main.querySelector('[role=status]')?.remove();
+      const toast=document.createElement('div');toast.className='planning-toast'+(this._error?' error':'');toast.setAttribute('popover','manual');toast.setAttribute('role',this._error?'alert':'status');toast.innerHTML=esc(this._error || this._notice)+this._button('×','dismiss-toast','aria-label="Fermer le message"');this.shadowRoot.append(toast);
+    }
+    this._restoreDialog(dialogState);
   }
   _open(event,date=this._selected){
-    this._error='';this._notice='';this._settings=false;
+    this._error='';this._notice='';this._settings=false;this._deviceDraft=null;
     const start=event?localMinute(event.start,this._zone):`${date}T06:00`,end=event?localMinute(event.end,this._zone):`${date}T07:00`,m=event?this._meta(event):null;
     this._draft={...(event || {}),original:event?{...event}:null,actionSnapshot:structuredClone(this._snapshot),readonly:!!event && !m,calendar:this._config.calendar || 'calendar.demo',event_id:m?.id || newEventId(),summary:event?.summary || '',date:start.slice(0,10),start_hour:start.slice(11,13),start_minute:start.slice(14,16),end_hour:end.slice(11,13),end_minute:end.slice(14,16),repeat:event?.rrule?'weekly':'once',days:[weekday(date)],has_end:m?.has_end || false,start_actions:m?structuredClone(m.start_actions):[{target:'',op:''}],end_actions:m?structuredClone(m.end_actions):[],color:m?.color || '#3689e6',note:m?.note || '',scope:'occurrence'};
-    this._render();this.shadowRoot.querySelector('form,.panel')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+    this._draft.readonly=!!event && !event.uid;
+    this._draft.calendarOnly=!!event?.uid && !event.meta;
+    if(this._draft.calendarOnly)this._draft.note=event.legacy?.note || (event.legacy?'':event.description || '');
+    this._render();
   }
   _change(event){
-    const el=event.target,d=this._draft;if(!d)return;
+    const el=event.target;if(this._deviceChange(el))return;const d=this._draft;if(!d)return;
     const rowEl=el.closest('.action-row');
     if(rowEl){const row=d[rowEl.dataset.phase][Number(rowEl.dataset.index)];if(el.hasAttribute('data-target')){row.target=el.value;row.op=defaultOperation(this._record(row.target));this._render();}else if(el.hasAttribute('data-operation'))row.op=el.value;return;}
     if(el.dataset.weekday!==undefined){d.days=Array.from(this.shadowRoot.querySelectorAll('[data-weekday]:checked'),e=>Number(e.dataset.weekday));return;}
@@ -133,6 +154,7 @@ class PlanningCard extends HTMLElement {
   }
   _draftDates(d){
     const time=`${d.start_hour}:${d.start_minute}`;
+    if(d.calendarOnly)return shiftedOccurrence(d.original,d.date,Number(d.start_hour)*60+Number(d.start_minute),this._zone);
     const start=!d.uid && d.repeat==='weekly'?weeklyStart(d.date,time,d.days,this._zone,Date.now(),this._config.demo):toInstant(`${d.date}T${time}`,this._zone);
     let end=new Date(Date.parse(start)+60000).toISOString();
     if(d.has_end){let day=dayOf(start,this._zone),endTime=`${d.end_hour}:${d.end_minute}`;if(endTime<=time)day=shiftDay(day,1);end=toInstant(`${day}T${endTime}`,this._zone);}
@@ -144,6 +166,7 @@ class PlanningCard extends HTMLElement {
     if(!same || scheduleFingerprint(same)!==scheduleFingerprint(event))throw new Error('Cette occurrence a changé ou a été supprimée. Actualisez avant de recommencer.');
     const issue=mutationIssue(same,'occurrence',rows);if(issue)throw new Error(issue);return rows;
   }
+  async _freshForIfLive(event,target){const issue=mutationIssue(event,'occurrence',this._events);if(issue)throw new Error(issue);occurrenceSelector(event);if(!this._config.demo)await this._freshFor(event,target);}
   _demoWrite(payload){
     const row=this._demoRows.find(x=>x.uid===payload.uid);
     if(payload.type.endsWith('/delete')){if(payload.recurrence_id){row.deleted=[...(row.deleted || []),payload.recurrence_id];if(row.exceptions)delete row.exceptions[payload.recurrence_id];}else this._demoRows=this._demoRows.filter(x=>x.uid!==payload.uid);return;}
@@ -155,7 +178,7 @@ class PlanningCard extends HTMLElement {
     try{await this._hass.callWS(payload);}catch(error){
       if(!draft)throw error;
       const rows=await this._fetch(shiftDay(dayOf(draft.start,this._zone),-1),shiftDay(dayOf(draft.end,this._zone),2));
-      const found=rows.filter(e=>e.meta?.id===draft.event_id && e.start===draft.start && e.end===draft.end && e.summary===draft.summary.trim() && e.description===payload.event.description && (!payload.uid || e.uid===payload.uid) && (!payload.recurrence_id || e.recurrence_id===payload.recurrence_id));
+      const found=rows.filter(e=>(payload.uid?e.uid===payload.uid:e.meta?.id===draft.event_id) && e.start===draft.start && e.end===draft.end && e.summary===draft.summary.trim() && (e.description || '')===payload.event.description && (!payload.recurrence_id || e.recurrence_id===payload.recurrence_id));
       if(found.length!==1)throw error;
     }
   }
@@ -165,19 +188,20 @@ class PlanningCard extends HTMLElement {
       if(!this._config.demo && d.pendingCreate){const pending=d.pendingCreate,rows=await this._fetch(shiftDay(dayOf(pending.start,this._zone),-1),shiftDay(dayOf(pending.end,this._zone),2));const found=rows.filter(e=>e.meta?.id===d.event_id);if(found.length){if(!found.some(e=>e.start===pending.start && e.end===pending.end && e.description===pending.description))throw new Error('Une programmation avec cet identifiant existe déjà. Actualisez avant de recommencer.');this._draft=null;this._notice='La première sauvegarde est déjà enregistrée. Ouvrez la programmation pour la modifier.';await this._load();return;}}
       if(!d.summary.trim())throw new Error('Donnez un nom à la programmation.');
       Object.assign(d,this._draftDates(d));
+      if(d.calendarOnly){if(!this._config.demo && Date.parse(d.start)<Date.now()+20*60000)throw new Error('Prévoyez au moins 20 minutes avant le début.');await this._freshForIfLive(d.original,d);const description=d.legacy?(d.note===(d.legacy.note || '')?d.original.description:JSON.stringify({...d.legacy,note:d.note})):d.note;await this._write(calendarEditPayload(d.original,{...d,description}),d);this._draft=null;this._notice='Cette occurrence a été modifiée. Ses actions existantes sont conservées.';await this._load();return;}
       const initialIssue=validateSchedule(d,this._choices().map(r=>({...r,id:r.value})),Date.now(),this._config.demo);if(initialIssue)throw new Error(initialIssue);
       if(d.original){const issue=mutationIssue(d.original,'occurrence',this._events);if(issue)throw new Error(issue);occurrenceSelector(d.original);if(!this._config.demo)await this._freshFor(d.original,d);}
       let actions=[...d.start_actions,...(d.has_end?d.end_actions:[])],resolved;
       if(this._config.demo){resolved=actions.map(a=>{if(a.target?.startsWith('entity:')){const r=this._record(a.target);if(!this._snapshot.records.some(x=>x.id===r.id))this._snapshot.records.push(r);return {...a,target:r.id};}return a;});}
-      else{if(!this._snapshot.ready)this._snapshot=await this._store.setup(VERSION,this._config.execution_automation);const result=await this._store.prepare(d.actionSnapshot,actions);this._snapshot=result.snapshot;resolved=result.actions;}
+      else{if(!this._snapshot.ready)this._snapshot=await this._store.setup(ACTION_BLUEPRINT_VERSION,this._config.execution_automation);const result=await this._store.prepare(d.actionSnapshot,actions);this._snapshot=result.snapshot;resolved=result.actions;}
       const draft={...d,start_actions:resolved.slice(0,d.start_actions.length),end_actions:d.has_end?resolved.slice(d.start_actions.length):[],rrule:!d.uid && d.repeat==='weekly'?`FREQ=WEEKLY;BYDAY=${[...d.days].sort((a,b)=>((a+6)%7)-((b+6)%7)).map(i=>['SU','MO','TU','WE','TH','FR','SA'][i]).join(',')}`:d.rrule};
       const issue=validateSchedule(draft,this._snapshot.records,Date.now(),this._config.demo);if(issue)throw new Error(issue);
       const payload=schedulePayload(draft);if(!this._config.demo){if(d.original)await this._freshFor(d.original,draft);else d.pendingCreate={start:draft.start,end:draft.end,description:payload.event.description};}await this._write(payload,draft);this._draft=null;this._notice=d.uid?'Cette occurrence a été modifiée.':'Programmation enregistrée.';await this._load();
     }catch(e){this._error=e.message;}finally{this._busy=false;this._render();}
   }
   async _move(event,date,minute){
-    if(this._busy || !this._meta(event))return;this._busy=true;this._error='';
-    try{const issue=mutationIssue(event,'occurrence',this._events);if(issue)throw new Error(issue);occurrenceSelector(event);const meta=this._meta(event),draft={...event,...shiftedOccurrence(event,date,minute,this._zone),scope:'occurrence',event_id:meta.id,...meta};if(!this._config.demo){await this._freshFor(event,draft);if(!this._snapshot.ready)this._snapshot=await this._store.setup(VERSION,this._config.execution_automation);const prepared=await this._store.prepare(this._snapshot,[...draft.start_actions,...draft.end_actions]);this._snapshot=prepared.snapshot;}const invalid=validateSchedule(draft,this._snapshot.records,Date.now(),this._config.demo);if(invalid)throw new Error(invalid);await this._write(schedulePayload(draft),draft);this._draft=null;this._notice='Cette occurrence a été déplacée. Les autres jours restent inchangés.';await this._load();}catch(e){this._error=e.message;}finally{this._busy=false;this._render();}
+    if(this._busy || !event.uid)return;this._busy=true;this._error='';
+    try{const dates=shiftedOccurrence(event,date,minute,this._zone);if(dates.start===event.start && dates.end===event.end)return;await this._freshForIfLive(event,dates);if(!this._config.demo && Date.parse(dates.start)<Date.now()+20*60000)throw new Error('Prévoyez au moins 20 minutes avant le début.');const draft={...event,...dates,event_id:event.meta?.id};await this._write(calendarEditPayload(event,dates),draft);this._draft=null;this._notice='Cette occurrence a été déplacée. Les autres jours et les actions restent inchangés.';await this._load();}catch(e){this._error=e.message;}finally{this._busy=false;this._render();}
   }
   async _delete(){
     if(this._busy || !this._draft?.original)return;this._busy=true;this._error='';const d=this._draft,event=d.original,scope=d.deleteScope;
@@ -185,26 +209,34 @@ class PlanningCard extends HTMLElement {
   }
   async _click(event){
     const target=event.target.closest('button');if(!target || this._busy)return;
+    if(target.dataset.event && performance.now()<(this._suppressEventClickUntil || 0))return;
+    if(target.hasAttribute('data-move-handle')){const item=this._events.find(x=>x.key===target.dataset.moveHandle);if(item){this._open(item,dayOf(item.start,this._zone));this.shadowRoot.querySelector('[name=date]')?.focus({preventScroll:true});}return;}
     if(target.hasAttribute('data-remove-action')){const row=target.closest('.action-row');this._draft[row.dataset.phase].splice(Number(row.dataset.index),1);this._render();return;}
     if(target.dataset.event){const item=this._events.find(x=>x.key===target.dataset.event);if(item)this._open(item,dayOf(item.start,this._zone));return;}
     if(target.dataset.day){this._selected=target.dataset.day;this._open(null,this._selected);return;}
     const action=target.dataset.action;
     if(action?.startsWith('view-')){this._view=action.slice(5);this._render();return;}
     switch(action){
+      case 'dismiss-toast':this._error='';this._notice='';this._render();break;
       case 'new':this._open(null);break;
       case 'cancel':this._draft=null;this._error='';this._render();break;
       case 'settings':this._settings=!this._settings;this._draft=null;this._render();break;
+      case 'new-device':this._openDevice();break;
+      case 'edit-device':this._openDevice(target.dataset.deviceId);break;
+      case 'device-cancel':this._deviceDraft=null;this._settings=true;this._error='';this._render();break;
+      case 'configure-actions':this._draft.calendarOnly=false;this._draft.readonly=false;this._error='';this._render();break;
       case 'add-start':case 'add-end':this._draft[action==='add-start'?'start_actions':'end_actions'].push({target:'',op:''});this._render();break;
       case 'delete':case 'delete-series':this._draft.deleteScope=action==='delete'?'occurrence':'series';this._render();break;
       case 'keep':delete this._draft.deleteScope;this._render();break;
       case 'confirm-delete':await this._delete();break;
-      case 'setup':this._busy=true;try{this._snapshot=await this._store.setup(VERSION,this._config.execution_automation);this._notice='Exécution préparée en mode test.';this._error='';}catch(e){this._error=e.message;}finally{this._busy=false;this._render();}break;
+      case 'setup':this._busy=true;try{this._snapshot=await this._store.setup(ACTION_BLUEPRINT_VERSION,this._config.execution_automation);this._notice='Exécution préparée en mode test.';this._error='';}catch(e){this._error=e.message;}finally{this._busy=false;this._render();}break;
       case 'refresh':await this._load();break;
       case 'today':this._selected=dayOf(Date.now(),this._zone);this._month=this._selected.slice(0,7);this._render();await this._load();break;
       case 'previous':case 'next':if(this._loading)return;if(this._view==='week'){this._selected=shiftDay(this._selected,action==='next'?7:-7);this._month=this._selected.slice(0,7);}else{const date=new Date(`${this._month}-01T12:00Z`);date.setUTCMonth(date.getUTCMonth()+(action==='next'?1:-1));this._month=date.toISOString().slice(0,7);this._selected=`${this._month}-01`;}this._render();await this._load();break;
     }
   }
 }
+Object.assign(PlanningCard.prototype,PlanningInteractions,PlanningDeviceSettings);
 if(!customElements.get('ha-planning-card'))customElements.define('ha-planning-card',PlanningCard);
 if(!customElements.get('ha-planning-chauffe-card'))customElements.define('ha-planning-chauffe-card',class extends PlanningCard{});
 window.customCards=window.customCards || [];

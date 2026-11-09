@@ -20,12 +20,12 @@ class NativeCalendarTests(unittest.TestCase):
         self.store.add(Event(dtstart=datetime(2026,11,9,6), dtend=datetime(2026,11,9,7), summary='Chauffe', rrule=Recur.from_rrule('FREQ=WEEKLY;COUNT=4;BYDAY=MO')))
     def rows(self):
         return list(self.calendar.timeline_tz(ZONE).overlapping(datetime(2026,11,1,tzinfo=ZONE),datetime(2026,12,10,tzinfo=ZONE)))
-    def payload(self, row, delete=False, scope='occurrence', date='2026-11-18'):
-        raw=dict(uid=row.uid,recurrence_id=row.recurrence_id,rrule='FREQ=WEEKLY;COUNT=4;BYDAY=MO',summary=row.summary,start=row.start.replace(tzinfo=ZONE).isoformat(),end=row.end.replace(tzinfo=ZONE).isoformat(),calendar='calendar.test')
-        code="""import {schedulePayload,occurrenceDeletePayload,shiftedOccurrence} from './src/actions-model.js';
+    def payload(self, row, delete=False, scope='occurrence', date='2026-11-18', preserve=False):
+        raw=dict(uid=row.uid,recurrence_id=row.recurrence_id,rrule='FREQ=WEEKLY;COUNT=4;BYDAY=MO',summary=row.summary,description=row.description or '',start=row.start.replace(tzinfo=ZONE).isoformat(),end=row.end.replace(tzinfo=ZONE).isoformat(),calendar='calendar.test')
+        code="""import {schedulePayload,calendarEditPayload,occurrenceDeletePayload,shiftedOccurrence} from './src/actions-model.js';
 const e=JSON.parse(process.argv[1]);const d={...e,...shiftedOccurrence(e,process.argv[4],480,'Europe/Brussels'),event_id:'test',scope:process.argv[3],start_actions:[{target:'heat',op:'on'}],end_actions:[{target:'heat',op:'off'}],has_end:true};
-console.log(JSON.stringify(process.argv[2]==='delete'?occurrenceDeletePayload(e,process.argv[3]):schedulePayload(d)));"""
-        result=subprocess.run(['node','--input-type=module','-e',code,json.dumps(raw),'delete' if delete else 'move',scope,date],cwd=ROOT,check=True,capture_output=True,text=True)
+console.log(JSON.stringify(process.argv[2]==='delete'?occurrenceDeletePayload(e,process.argv[3]):process.argv[2]==='preserve'?calendarEditPayload(e,d):schedulePayload(d)));"""
+        result=subprocess.run(['node','--input-type=module','-e',code,json.dumps(raw),'delete' if delete else 'preserve' if preserve else 'move',scope,date],cwd=ROOT,check=True,capture_output=True,text=True)
         return json.loads(result.stdout)
     def apply(self,p):
         if p['type'].endswith('/delete'):
@@ -52,5 +52,12 @@ console.log(JSON.stringify(process.argv[2]==='delete'?occurrenceDeletePayload(e,
     def test_explicit_series_delete_includes_detached_exception(self):
         self.apply(self.payload(self.rows()[1]));self.apply(self.payload(self.rows()[0],delete=True,scope='series'))
         self.assertEqual(self.rows(),[])
+    def test_legacy_occurrence_move_preserves_description_and_other_weeks(self):
+        row=self.rows()[0]
+        description='  {"planning_chauffe":1,"kind":"weekly","devices":["frech_1"]}  '
+        self.store.edit(row.uid,Event(dtstart=row.start,dtend=row.end,summary=row.summary,description=description,rrule=Recur.from_rrule('FREQ=WEEKLY;COUNT=4;BYDAY=MO')))
+        self.apply(self.payload(self.rows()[1],preserve=True))
+        self.assertEqual([r.start.day for r in self.rows()],[9,18,23,30])
+        self.assertTrue(all(r.description==description for r in self.rows()))
 
 if __name__=='__main__':unittest.main()
