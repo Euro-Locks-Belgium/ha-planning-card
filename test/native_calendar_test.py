@@ -8,7 +8,7 @@ import unittest
 from ical.calendar import Calendar
 from ical.event import Event
 from ical.store import EventStore
-from ical.types import Recur
+from ical.types import Recur, Range
 
 ZONE = ZoneInfo('Europe/Brussels')
 ROOT = Path(__file__).parents[1]
@@ -20,12 +20,12 @@ class NativeCalendarTests(unittest.TestCase):
         self.store.add(Event(dtstart=datetime(2026,11,9,6), dtend=datetime(2026,11,9,7), summary='Chauffe', rrule=Recur.from_rrule('FREQ=WEEKLY;COUNT=4;BYDAY=MO')))
     def rows(self):
         return list(self.calendar.timeline_tz(ZONE).overlapping(datetime(2026,11,1,tzinfo=ZONE),datetime(2026,12,10,tzinfo=ZONE)))
-    def payload(self, row, delete=False, scope='occurrence', date='2026-11-18', preserve=False):
+    def payload(self, row, delete=False, scope='occurrence', date='2026-11-18', preserve=False, rule=''):
         raw=dict(uid=row.uid,recurrence_id=row.recurrence_id,rrule='FREQ=WEEKLY;COUNT=4;BYDAY=MO',summary=row.summary,description=row.description or '',start=row.start.replace(tzinfo=ZONE).isoformat(),end=row.end.replace(tzinfo=ZONE).isoformat(),calendar='calendar.test')
         code="""import {schedulePayload,calendarEditPayload,occurrenceDeletePayload,shiftedOccurrence} from './src/actions-model.js';
-const e=JSON.parse(process.argv[1]);const d={...e,...shiftedOccurrence(e,process.argv[4],480,'Europe/Brussels'),event_id:'test',scope:process.argv[3],start_actions:[{target:'heat',op:'on'}],end_actions:[{target:'heat',op:'off'}],has_end:true};
-console.log(JSON.stringify(process.argv[2]==='delete'?occurrenceDeletePayload(e,process.argv[3]):process.argv[2]==='preserve'?calendarEditPayload(e,d):schedulePayload(d)));"""
-        result=subprocess.run(['node','--input-type=module','-e',code,json.dumps(raw),'delete' if delete else 'preserve' if preserve else 'move',scope,date],cwd=ROOT,check=True,capture_output=True,text=True)
+const e=JSON.parse(process.argv[1]);const d={...e,...shiftedOccurrence(e,process.argv[4],480,'Europe/Brussels'),event_id:'test',scope:process.argv[3],rrule:process.argv[5] || e.rrule,start_actions:[{target:'heat',op:'on'}],end_actions:[{target:'heat',op:'off'}],has_end:true};
+console.log(JSON.stringify(process.argv[2]==='delete'?occurrenceDeletePayload(e,process.argv[3]):process.argv[2]==='preserve'?calendarEditPayload(e,d,process.argv[3]):schedulePayload(d)));"""
+        result=subprocess.run(['node','--input-type=module','-e',code,json.dumps(raw),'delete' if delete else 'preserve' if preserve else 'move',scope,date,rule],cwd=ROOT,check=True,capture_output=True,text=True)
         return json.loads(result.stdout)
     def apply(self,p):
         if p['type'].endswith('/delete'):
@@ -34,7 +34,9 @@ console.log(JSON.stringify(process.argv[2]==='delete'?occurrenceDeletePayload(e,
         event=p['event']
         # HA _parse_event converts timezone-aware JSON to floating local datetimes.
         floating=lambda value: datetime.fromisoformat(value.replace('Z','+00:00')).astimezone(ZONE).replace(tzinfo=None)
-        self.store.edit(p['uid'],Event(dtstart=floating(event['dtstart']),dtend=floating(event['dtend']),summary=event['summary'],description=event['description']),recurrence_id=p.get('recurrence_id'))
+        kwargs=dict(dtstart=floating(event['dtstart']),dtend=floating(event['dtend']),summary=event['summary'],description=event['description'])
+        if event.get('rrule'):kwargs['rrule']=Recur.from_rrule(event['rrule'])
+        self.store.edit(p['uid'],Event(**kwargs),recurrence_id=p.get('recurrence_id'),recurrence_range=Range.THIS_AND_FUTURE if p.get('recurrence_range')=='THISANDFUTURE' else Range.NONE)
     def test_move_only_one_occurrence(self):
         before=self.rows();self.apply(self.payload(before[1]));after=self.rows()
         self.assertEqual([r.start.day for r in after],[9,18,23,30])
@@ -59,5 +61,21 @@ console.log(JSON.stringify(process.argv[2]==='delete'?occurrenceDeletePayload(e,
         self.apply(self.payload(self.rows()[1],preserve=True))
         self.assertEqual([r.start.day for r in self.rows()],[9,18,23,30])
         self.assertTrue(all(r.description==description for r in self.rows()))
+    def test_full_series_updates_every_occurrence(self):
+        before=self.rows();self.apply(self.payload(before[2],scope='series',date='2026-11-09'))
+        self.assertEqual([r.start.day for r in self.rows()],[9,16,23,30])
+        self.assertTrue(all(r.start.hour==8 and r.uid==before[0].uid for r in self.rows()))
+    def test_full_series_can_change_weekdays_and_keeps_count(self):
+        self.apply(self.payload(self.rows()[0],scope='series',date='2026-11-09',rule='FREQ=WEEKLY;COUNT=4;BYDAY=MO,WE'))
+        self.assertEqual([r.start.day for r in self.rows()],[9,11,16,18])
+    def test_full_series_replacement_resets_individual_exceptions_as_disclosed(self):
+        before=self.rows();self.apply(self.payload(before[1]));self.apply(self.payload(before[2],delete=True))
+        self.apply(self.payload(self.rows()[0],scope='series',date='2026-11-09'))
+        self.assertEqual([r.start.day for r in self.rows()],[9,16,23,30])
+        self.assertTrue(all(r.start.hour==8 for r in self.rows()))
+    def test_calendar_only_series_keeps_original_description(self):
+        self.apply(self.payload(self.rows()[0],scope='series',date='2026-11-09',preserve=True))
+        self.assertEqual(len(self.rows()),4)
+        self.assertTrue(all(r.start.hour==8 and not r.description for r in self.rows()))
 
 if __name__=='__main__':unittest.main()

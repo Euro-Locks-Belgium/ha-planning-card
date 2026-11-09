@@ -1,4 +1,4 @@
-export const DEFAULT_APPEARANCE = { default_view: 'month', first_day: 1, time_format: '24', density: 'comfortable', event_style: 'filled', show_weekends: true, show_device_names: true, accent_color: '' };
+export const DEFAULT_APPEARANCE = { default_view: 'month', first_day: 1, time_format: '24', density: 'compact', event_style: 'filled', show_weekends: true, show_device_names: true, accent_color: '' };
 export function normalizeAppearance(input = {}) {
   const options = { ...DEFAULT_APPEARANCE, ...input };
   for (const [key, choices] of Object.entries({default_view:['month','week','agenda'],first_day:[0,1],time_format:['12','24'],density:['compact','comfortable'],event_style:['filled','outline','dot']})) {

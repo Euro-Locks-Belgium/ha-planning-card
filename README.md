@@ -3,8 +3,8 @@
 Une carte de calendrier pour choisir **quand** et **quoi faire** : démarrer des
 Frech, ouvrir une barrière, allumer une chauffe puis l’éteindre.
 
-**Version 0.7.0** : en-tête compact, interface FR/EN/NL/IT, assombrissement au survol
-et sélection des appareils limitée aux paramètres de la carte.
+**Version 0.8.0** : modification d’un jour ou d’une série,
+couleurs des anciennes programmations corrigées et calendrier plus compact.
 
 Fenêtres centrées à l’écran, déplacement souris/tactile, actions ponctuelles ou créneaux avec début/fin,
 déplacement et suppression d’une seule occurrence. Le planning commence sans programmation.
@@ -29,7 +29,19 @@ configurés, le profil conserve le script et ses paramètres de contrôle d’en
 Un seul calendrier local suffit. Il n’y a plus de groupes, de formulaire d’exclusion
 ou de passage obligatoire par un onglet Appareils.
 
-## Déplacer ou supprimer un jour dans une série
+## Modifier, déplacer ou supprimer une programmation
+
+Cliquer sur une programmation récurrente puis
+choisir **Modifier → Ce jour uniquement** ou **Toute la série**. Le premier choix
+est sélectionné par défaut. Le second permet de changer les horaires, actions,
+couleurs et, pour une programmation hebdomadaire Planning, les jours habituels.
+
+**Toute la série** remplace la série à partir de la **Date de début de la série**
+affichée dans le formulaire. Vérifier cette date avant **Enregistrer la série**.
+Le calendrier local réinitialise alors les jours déplacés ou supprimés individuellement ;
+un avertissement le rappelle avant l’enregistrement. Les limites existantes de répétition
+(`COUNT` ou `UNTIL`) restent dans la règle, mais les occurrences sont recalculées depuis
+la nouvelle date de départ.
 
 Glisser une programmation vers une date en vue **Mois** conserve son heure et sa
 durée. En vue **Semaine**, la position verticale choisit l’heure par pas de 10 minutes.
@@ -40,8 +52,6 @@ tactile, glisser la poignée **⠿** de l’événement ; toucher son libellé o
 
 Cliquer sur une programmation puis **Supprimer ce jour** retire une seule occurrence.
 **Toute la série → Supprimer toute la série** est une action distincte avec confirmation.
-Pour changer tous les horaires d’une série, créer le nouvel horaire puis supprimer
-l’ancienne série.
 
 Les anciens événements et ceux créés directement dans le calendrier peuvent changer
 de date, d’heure, de nom ou de note sans changer leurs actions existantes. Leur durée
@@ -59,7 +69,7 @@ peuvent pas être déplacés ou supprimés, afin de conserver leur extinction/fe
 
 Pour la version publiée : HACS → Dépôts personnalisés →
 `https://github.com/Euro-Locks-Belgium/ha-planning-card`, catégorie Dashboard.
-Mettre à jour **Planning** vers **v0.7.0**, puis recharger complètement le navigateur
+Mettre à jour **Planning** vers **v0.8.0**, puis recharger complètement le navigateur
 ou l’application Home Assistant.
 La ressource est `/hacsfiles/ha-planning-card/ha-planning-card.js`, type Module JavaScript.
 Le type historique `custom:ha-planning-chauffe-card` reste disponible.
@@ -156,6 +166,12 @@ L’en-tête occupe deux lignes : titre/actions/statut, puis mois et année avec
 navigation et les vues. Sur les petites cartes, Réglages et Aujourd’hui deviennent
 des icônes ; les commandes passent sur une ligne supplémentaire si nécessaire.
 Le survol assombrit les événements en conservant leur couleur.
+
+Le calendrier utilise la densité **Compacte** par défaut, réduit la
+hauteur des cases et l’échelle horaire de la vue Semaine. Les lignes du mois
+s’agrandissent quand elles contiennent plusieurs événements. Le style **Rempli**
+affiche la couleur en fond avant le survol ; **Contour** et **Point** conservent
+leur présentation respective.
 
 **Langue** dans l’éditeur choisit Français, English, Nederlands ou Italiano.
 **Automatique (Home Assistant)** utilise la langue de l’utilisateur. Les jours,

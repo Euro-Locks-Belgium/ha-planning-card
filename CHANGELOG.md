@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.0 — 2026-11-09
+
+- Choix explicite entre « Ce jour uniquement » et « Toute la série » dans le formulaire de modification.
+- Modification des horaires, actions, couleurs et jours habituels d’une série hebdomadaire.
+- Date de départ et avertissement avant le remplacement natif d’une série : les exceptions déplacées ou supprimées sont réinitialisées.
+- Glisser-déposer toujours limité à l’occurrence déplacée, indépendamment du choix dans le formulaire.
+- Couleurs des anciennes programmations visibles avant le survol ; survol limité à un assombrissement.
+- Calendrier plus compact par défaut : cases moins hautes, hauteur naturelle et échelle horaire réduite en vue Semaine.
+- Vérification des deux portées avec le calendrier natif et dans le navigateur.
+
 ## 0.7.0 — 2026-11-09
 
 - En-tête compact : statut réduit à un badge ; mois/année, navigation, vues et Aujourd’hui regroupés sur une barre.

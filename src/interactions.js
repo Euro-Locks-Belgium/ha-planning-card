@@ -23,7 +23,7 @@ export const PlanningInteractions={
     // elementFromPoint can find an element behind its scroll container in some browsers.
     const clip=target.closest('.week-scroll') || this.shadowRoot.querySelector('ha-card'),bounds=clip.getBoundingClientRect();
     if(x<bounds.left || x>bounds.right || y<bounds.top || y>bounds.bottom)return null;
-    let minute;if(target.classList.contains('week-day'))minute=Math.max(0,Math.min(1430,Math.round((y-target.getBoundingClientRect().top)/48*6)*10));
+    let minute;if(target.classList.contains('week-day'))minute=Math.max(0,Math.min(1430,Math.round((y-target.getBoundingClientRect().top)/this._weekHourHeight*6)*10));
     return {element:target,day:target.dataset.drop,minute};
   },
   _highlightDrop(drop){this.shadowRoot.querySelectorAll('.drop-over').forEach(x=>x.classList.remove('drop-over'));drop?.element.classList.add('drop-over');},

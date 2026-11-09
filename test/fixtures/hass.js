@@ -2,6 +2,7 @@ window.setupPlanningTest=({demo=false,admin=true}={})=>{
   const card=window.__planningCard || document.querySelector('ha-planning-card'),calendar='calendar.test';let rows=[],failRead=false,failWrite=false,loseReply=false,loseRead=false;
   const ws=[],apiWrites=[],reads=[];
   let config={id:'test-actions',alias:'Planning test',use_blueprint:{path:'test/planning-actions.yaml',input:{planning_calendar:calendar,test_mode:true,action_catalog:{frech_1:{name:'Frech 1',type:'frech',enabled:true,switch_entity:'switch.frech',script_entity:'script.start_frech',input_entity:'binary_sensor.frech',frech_number:1}}}}};
+  function recurringRows(base){const names=['SU','MO','TU','WE','TH','FR','SA'],days=(base.rrule.match(/BYDAY=([^;]+)/)?.[1] || names[new Date(base.start).getUTCDay()]).split(','),local=new Date(Date.parse(base.start)+3600000),duration=Date.parse(base.end)-Date.parse(base.start),count=Number(base.rrule.match(/COUNT=(\d+)/)?.[1] || 1000),out=[];for(let offset=0;offset<84 && out.length<count;offset++){const day=new Date(local);day.setUTCDate(day.getUTCDate()+offset);if(!days.includes(names[day.getUTCDay()]))continue;const start=new Date(day.getTime()-3600000).toISOString(),end=new Date(Date.parse(start)+duration).toISOString(),recurrence_id=day.toISOString().slice(0,19).replace(/[-:]/g,'');out.push({...base,start,end,recurrence_id});}return out;}
   const hass={config:{time_zone:'Europe/Brussels'},user:{is_admin:admin},states:{},async callApi(method,path,body){
     reads.push({method,path});if(failRead)throw new Error('Lecture refusée');
     if(path==='config/automation/config/test-actions'){if(!this.user.is_admin)throw new Error('Admin uniquement');if(method==='POST'){config=structuredClone(body);apiWrites.push(structuredClone(body));return {};}return structuredClone(config);}
@@ -11,15 +12,10 @@ window.setupPlanningTest=({demo=false,admin=true}={})=>{
     ws.push(structuredClone(p));if(failWrite)throw new Error('Écriture refusée');
     if(!p.type.startsWith('calendar/event/'))throw new Error('Commande inattendue '+p.type);
     if(p.type.endsWith('/delete'))rows=rows.filter(r=>r.uid!==p.uid || (p.recurrence_id && r.recurrence_id!==p.recurrence_id));
-    else if(p.type.endsWith('/update')){const matches=rows.filter(r=>r.uid===p.uid && (!p.recurrence_id || r.recurrence_id===p.recurrence_id));if(matches.length!==1)throw new Error('Occurrence introuvable');Object.assign(matches[0],p.event,{start:p.event.dtstart,end:p.event.dtend});}
-    else{
-      const uid=crypto.randomUUID(),base={...p.event,uid,start:p.event.dtstart,end:p.event.dtend};
-      if(!p.event.rrule)rows.push(base);
-      else{
-        const names=['SU','MO','TU','WE','TH','FR','SA'],days=p.event.rrule.split('BYDAY=')[1].split(','),local=new Date(Date.parse(base.start)+3600000),duration=Date.parse(base.end)-Date.parse(base.start);
-        for(let offset=0;offset<84;offset++){const day=new Date(local);day.setUTCDate(day.getUTCDate()+offset);if(!days.includes(names[day.getUTCDay()]))continue;const start=new Date(day.getTime()-3600000).toISOString(),end=new Date(Date.parse(start)+duration).toISOString(),rid=day.toISOString().slice(0,19).replace(/[-:]/g,'');rows.push({...base,start,end,recurrence_id:rid});}
-      }
-    }
+    else if(p.type.endsWith('/update')){
+      if(!p.recurrence_id && p.event.rrule){rows=rows.filter(r=>r.uid!==p.uid);rows.push(...recurringRows({...p.event,uid:p.uid,start:p.event.dtstart,end:p.event.dtend}));}
+      else{const matches=rows.filter(r=>r.uid===p.uid && (!p.recurrence_id || r.recurrence_id===p.recurrence_id));if(matches.length!==1)throw new Error('Occurrence introuvable');Object.assign(matches[0],p.event,{start:p.event.dtstart,end:p.event.dtend});}
+    }else{const base={...p.event,uid:crypto.randomUUID(),start:p.event.dtstart,end:p.event.dtend};rows.push(...(p.event.rrule?recurringRows(base):[base]));}
     if(loseReply){loseReply=false;failRead=loseRead;loseRead=false;throw new Error('Réponse perdue');}return null;
   }};
   for(const [entity,name] of Object.entries({'calendar.test':'Planning test','automation.actions':'Exécution planning','switch.heat':'Chauffe atelier','switch.gate':'Barrière secondaire','cover.gate':'Barrière principale','switch.frech':'Frech 1','script.start_frech':'Démarrage Frech','binary_sensor.frech':'Retour Frech','script.simple':'Script simple'}))hass.states[entity]={entity_id:entity,state:entity.startsWith('cover.')?'closed':entity.startsWith('automation.')?'on':'off',attributes:{friendly_name:name,...(entity.startsWith('calendar.')?{supported_features:7}:{}),...(entity.startsWith('automation.')?{id:'test-actions',current:0}:{})}};

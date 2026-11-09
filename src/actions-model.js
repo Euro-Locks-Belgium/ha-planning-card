@@ -61,6 +61,7 @@ export function normalizeSchedule(raw,calendar,zone) {
 export function recurring(event) {return !!(event.rrule || event.recurrence_id);}
 export function sameOccurrence(a,b) {return a.calendar===b.calendar && a.uid===b.uid && (a.recurrence_id || '')===(b.recurrence_id || '');}
 export function occurrenceSelector(event,scope='occurrence') {
+  if(!['occurrence','series'].includes(scope))throw new Error('Portée de modification invalide.');
   if(!event.uid) throw new Error('Cet événement ne possède pas d’identifiant modifiable.');
   if(scope==='occurrence' && recurring(event)) {
     if(typeof event.recurrence_id !== 'string' || !event.recurrence_id) throw new Error('Ce calendrier ne fournit pas l’identifiant de cette occurrence. La série n’a pas été modifiée.');
@@ -71,13 +72,22 @@ export function occurrenceSelector(event,scope='occurrence') {
 export function schedulePayload(draft) {
   const event={dtstart:draft.start,dtend:draft.end,summary:draft.summary.trim(),description:JSON.stringify({planning:2,kind:'schedule',id:draft.event_id || newEventId(),color:eventColor(draft.color),has_end:!!draft.has_end,start_actions:draft.start_actions,end_actions:draft.has_end?draft.end_actions:[],note:draft.note || ''})};
   if(draft.rrule && (!draft.uid || draft.scope==='series')) event.rrule=draft.rrule;
-  return {type:`calendar/event/${draft.uid?'update':'create'}`,entity_id:draft.calendar,...(draft.uid?occurrenceSelector(draft,draft.scope):{}),event};
+  return {type:`calendar/event/${draft.uid?'update':'create'}`,entity_id:draft.calendar,...(draft.uid?occurrenceSelector(draft,draft.scope):{}),...(draft.uid && draft.scope==='series'?{recurrence_range:'THISANDFUTURE'}:{}),event};
 }
 export function occurrenceDeletePayload(event,scope='occurrence') {return {type:'calendar/event/delete',entity_id:event.calendar,...occurrenceSelector(event,scope)};}
-export function calendarEditPayload(original,changes){
+export function calendarEditPayload(original,changes,scope='occurrence'){
   const event={dtstart:changes.start,dtend:changes.end,summary:changes.summary ?? original.summary,description:changes.description ?? original.description ?? ''};
   if(typeof original.location==='string')event.location=original.location;
-  return {type:'calendar/event/update',entity_id:original.calendar,...occurrenceSelector(original),event};
+  if(scope==='series'){const rule=changes.rrule || original.rrule;if(!rule)throw new Error('Règle de répétition indisponible. Ouvrez une occurrence habituelle.');event.rrule=rule;}
+  return {type:'calendar/event/update',entity_id:original.calendar,...occurrenceSelector(original,scope),...(scope==='series'?{recurrence_range:'THISANDFUTURE'}:{}),event};
+}
+export function seriesRule(event,events=[]){return event.rrule || events.find(e=>e.calendar===event.calendar && e.uid===event.uid && e.rrule)?.rrule || '';}
+export function ruleDays(rule,fallback=1){const days=rule?.match(/(?:^|;)BYDAY=([^;]+)/i)?.[1];return days?days.split(',').map(value=>['SU','MO','TU','WE','TH','FR','SA'].indexOf(value.replace(/^[+-]?\d+/,''))).filter(value=>value>=0):[fallback];}
+export function editedWeeklyRule(rule,days){
+  if(!/(?:^|;)FREQ=WEEKLY(?:;|$)/i.test(rule))return rule;
+  if(!days.length)throw new Error('Choisissez au moins un jour de répétition.');
+  const value=[...new Set(days)].sort((a,b)=>(a+6)%7-(b+6)%7).map(i=>['SU','MO','TU','WE','TH','FR','SA'][i]).join(',');
+  return /(?:^|;)BYDAY=/i.test(rule)?rule.replace(/(^|;)BYDAY=[^;]+/i,`$1BYDAY=${value}`):`${rule};BYDAY=${value}`;
 }
 export function wallDuration(event,zone) {return (Date.parse(`${localMinute(event.end,zone)}:00Z`)-Date.parse(`${localMinute(event.start,zone)}:00Z`))/60000;}
 export function shiftedOccurrence(event,date,minute,zone) {
