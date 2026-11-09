@@ -3,8 +3,10 @@
 Une carte de calendrier pour choisir **quand** et **quoi faire** : démarrer des
 Frech, ouvrir une barrière, allumer une chauffe puis l’éteindre.
 
-**Version 0.6.1** : fenêtres centrées à l’écran, déplacement souris/tactile et
-sélection des appareils corrigés. Actions ponctuelles ou créneaux avec début/fin,
+**Version 0.7.0** : en-tête compact, interface FR/EN/NL/IT, assombrissement au survol
+et sélection des appareils limitée aux paramètres de la carte.
+
+Fenêtres centrées à l’écran, déplacement souris/tactile, actions ponctuelles ou créneaux avec début/fin,
 déplacement et suppression d’une seule occurrence. Le planning commence sans programmation.
 
 ## Un créneau, ses actions
@@ -57,7 +59,7 @@ peuvent pas être déplacés ou supprimés, afin de conserver leur extinction/fe
 
 Pour la version publiée : HACS → Dépôts personnalisés →
 `https://github.com/Euro-Locks-Belgium/ha-planning-card`, catégorie Dashboard.
-Mettre à jour **Planning** vers **v0.6.1**, puis recharger complètement le navigateur
+Mettre à jour **Planning** vers **v0.7.0**, puis recharger complètement le navigateur
 ou l’application Home Assistant.
 La ressource est `/hacsfiles/ha-planning-card/ha-planning-card.js`, type Module JavaScript.
 Le type historique `custom:ha-planning-chauffe-card` reste disponible.
@@ -105,15 +107,17 @@ identifiants et des opérations prédéfinies.
 ### Choisir et configurer les appareils
 
 - **Modifier la carte → Appareils proposés dans les programmations** : rechercher et
-  cocher les entités à proposer sur cette carte. Sans sélection, tous les appareils
-  compatibles sont proposés à un administrateur. Cette sélection ne donne pas de
+  cocher les entités autorisées sur cette carte. **Sans sélection, aucun nouvel
+  appareil n’est proposé.** Cette sélection ne donne pas de
   droits supplémentaires aux utilisateurs classiques.
 - **Réglages → Appareils du planning → Ajouter un appareil** : enregistrer un appareil
   partagé, son nom et son entité. Le type **Frech** permet de choisir son relais,
   son entrée de contrôle, son script existant et son numéro. **Modifier** permet
   ensuite de changer ce profil sans changer son identifiant dans les programmations.
-- Si une sélection d’appareils est active dans l’éditeur de carte, y cocher aussi
-  le nouvel appareil pour le proposer sur cette carte.
+- Pour un profil Frech, cocher son relais, son script et son entrée de contrôle.
+  Les entrées `binary_sensor` servent uniquement au contrôle ; elles ne deviennent
+  jamais des actions de programmation. Les sélecteurs d’ajout proposent uniquement
+  les entités cochées. Un ancien profil reste conservé lorsqu’il sort de la sélection.
 - **Modifier la carte → Exécution existante / migration** : choisir une ancienne
   automatisation Planning pour retrouver son catalogue et ses profils Frech.
 
@@ -147,6 +151,18 @@ aux anciens exécuteurs jusqu’à leur retrait manuel ; elles ne s’appliquent
 aux nouveaux créneaux.
 
 ## Affichage et taille
+
+L’en-tête occupe deux lignes : titre/actions/statut, puis mois et année avec la
+navigation et les vues. Sur les petites cartes, Réglages et Aujourd’hui deviennent
+des icônes ; les commandes passent sur une ligne supplémentaire si nécessaire.
+Le survol assombrit les événements en conservant leur couleur.
+
+**Langue** dans l’éditeur choisit Français, English, Nederlands ou Italiano.
+**Automatique (Home Assistant)** utilise la langue de l’utilisateur. Les jours,
+mois et libellés suivent ce choix. Les noms d’appareils, titres saisis, notes,
+identifiants et commandes enregistrées ne sont pas traduits. Le choix de langue
+de chaque carte ne change pas les programmations partagées ni les notifications
+du blueprint d’exécution.
 
 L’éditeur de carte regroupe le nom, le calendrier et **Personnalisation** :
 mois/semaine/agenda, premier jour, format 12/24 h, densité, week-ends, noms des appareils,
@@ -189,6 +205,7 @@ python -m unittest discover -s test -p '*blueprint_test.py'
 python -m unittest discover -s test -p 'native_calendar_test.py'
 node test/browser.mjs
 node test/interaction-browser.mjs
+node test/locales-browser.mjs
 ```
 
 Le parcours navigateur utilise Playwright/Chromium ; `PLANNING_NODE_MODULES` permet
@@ -198,3 +215,6 @@ et appliquent les messages réellement produits par le modèle JavaScript.
 Les autres tests simulent les services HA : ils ne pilotent aucun appareil.
 `node scripts/preview.mjs` crée `local/planning-simple-preview.html`, un aperçu
 autonome à ouvrir dans un navigateur, avec appareils fictifs et aucun appel réseau.
+Dans cet aperçu, ouvrir **Paramètres de la carte → Langue**, choisir la langue puis
+**Enregistrer**. Le même éditeur est utilisé que dans Home Assistant ; les
+programmations de la session locale sont conservées. Le choix Annuler ne modifie rien.

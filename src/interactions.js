@@ -50,7 +50,7 @@ export const PlanningInteractions={
   },
   _updatePointerDrop(p){
     p.drop=this._dropAt(p.lastX,p.lastY);this._highlightDrop(p.drop);
-    if(p.ghost){p.ghost.style.left=`${Math.max(4,Math.min(innerWidth-285,p.lastX+14))}px`;p.ghost.style.top=`${Math.max(4,Math.min(innerHeight-70,p.lastY+14))}px`;p.ghost.textContent=`${p.item.summary} · ${p.drop?this._label(p.drop.day)+(p.drop.minute===undefined?'':` ${String(Math.floor(p.drop.minute/60)).padStart(2,'0')}:${String(p.drop.minute%60).padStart(2,'0')}`):'Choisir une date'}`;}
+    if(p.ghost){p.ghost.style.left=`${Math.max(4,Math.min(innerWidth-285,p.lastX+14))}px`;p.ghost.style.top=`${Math.max(4,Math.min(innerHeight-70,p.lastY+14))}px`;p.ghost.textContent=`${p.item.summary} · ${p.drop?this._label(p.drop.day)+(p.drop.minute===undefined?'':` ${String(Math.floor(p.drop.minute/60)).padStart(2,'0')}:${String(p.drop.minute%60).padStart(2,'0')}`):this._t('Choisir une date')}`;}
   },
   _dragScroll(p){
     const near=this.shadowRoot.elementFromPoint(p.lastX,p.lastY),box=near?.closest('.week-scroll') || this.shadowRoot.querySelector('ha-card');

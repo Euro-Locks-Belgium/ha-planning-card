@@ -26,6 +26,6 @@ window.setupPlanningTest=({demo=false,admin=true}={})=>{
   const projection=()=>({uid:'registry',start:'2000-01-01T00:00:00Z',end:'2000-01-02T00:00:00Z',summary:'Configuration',description:JSON.stringify({planning_actions:1,automation:'automation.actions',test_mode:true,actions:Object.entries(config.use_blueprint.input.action_catalog).map(([id,r])=>({id,name:r.name,type:r.type,enabled:r.enabled,entity_id:r.entity_id || r.switch_entity || r.script_entity}))})});
   rows.push(projection());
   window.testPlanning={card,hass,ws,apiWrites,reads,get rows(){return rows;},get config(){return config;},failReads(v){failRead=v;},failWrites(v){failWrite=v;},loseNextReply(){loseReply=true;},loseNextReplyAndRead(){loseReply=true;loseRead=true;},add(row){rows.push(structuredClone(row));}};
-  card.setConfig({type:'custom:ha-planning-card',calendar,demo});card.hass=hass;
+  card.setConfig({type:'custom:ha-planning-card',calendar,demo,entities:Object.keys(hass.states).filter(e=>/^(switch|cover|script|binary_sensor)[.]/.test(e))});card.hass=hass;
   if(demo){card._snapshot={ready:true,records:Object.entries(config.use_blueprint.input.action_catalog).map(([id,r])=>({...r,id})),test_mode:true};card._render();}
 };

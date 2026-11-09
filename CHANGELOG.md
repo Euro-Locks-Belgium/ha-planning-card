@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 — 2026-11-09
+
+- En-tête compact : statut réduit à un badge ; mois/année, navigation, vues et Aujourd’hui regroupés sur une barre.
+- Adaptation à la largeur réelle de la carte ; boutons de réglages et Aujourd’hui réduits à une icône sur les petites cartes.
+- Interface en français, anglais, néerlandais et italien ; choix automatique selon Home Assistant ou choix manuel dans l’éditeur.
+- Dates, jours, formulaires, messages et libellés accessibles traduits ; noms, notes et données des programmations conservés.
+- Survol et focus des événements : assombrissement de leur couleur.
+- Ajout d’appareils limité aux entités cochées dans les paramètres de la carte, y compris script et entrée d’un profil Frech.
+- Une sélection vide ne propose plus de nouveaux appareils ; les anciens profils et programmations restent conservés.
+- Langue dans les paramètres de la carte ; l’aperçu utilise le même éditeur Home Assistant, avec Enregistrer et Annuler.
+- Tests de disposition, de traduction et de filtrage.
+
 ## 0.6.1 — 2026-11-09
 
 - Formulaires et réglages dans une fenêtre native centrée au-dessus du tableau de bord, avec défilement interne, fermeture Échap et focus conservé.

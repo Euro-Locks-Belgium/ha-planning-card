@@ -1,5 +1,6 @@
 import {eventTime, metadata, localMinute, dayOf, toInstant, shiftDay, weekday, newEventId, eventColor, MIN_LEAD_MINUTES} from './model.js';
 import {normalizeAppearance} from './views.js';
+import {planningLanguage} from './i18n.js';
 
 export const ACTION_TYPES = {
   switch: {label:'Interrupteur', operations:{on:'Allumer',off:'Éteindre'}},
@@ -16,7 +17,7 @@ export const ACTION_TYPES = {
 export const ACTION_BLUEPRINT_VERSION='0.6.0';
 export function selectedPlanningEntities(input=[]){
   if(!Array.isArray(input) || input.length>200)throw new Error('La sélection doit contenir au maximum 200 entités.');
-  for(const entity of input)if(typeof entity!=='string' || !/^[a-z_]+\.[a-z0-9_]+$/.test(entity) || !Object.hasOwn(ACTION_TYPES,entity.split('.')[0]))throw new Error('Un appareil sélectionné est incompatible.');
+  for(const entity of input)if(typeof entity!=='string' || !/^[a-z_]+\.[a-z0-9_]+$/.test(entity) || ![...Object.keys(ACTION_TYPES).filter(t=>t!=='frech'),'binary_sensor'].includes(entity.split('.')[0]))throw new Error('Un appareil sélectionné est incompatible.');
   return [...new Set(input)];
 }
 export function targetEntity(record) { return record.entity_id || record.switch_entity || record.script_entity || ''; }
@@ -36,7 +37,8 @@ export function validateActionRecord(record) {
   return '';
 }
 export function normalizePlanningConfig(input) {
-  const config={title:'Planning',calendar:'',demo:!input.calendar,...input,entities:selectedPlanningEntities(input.entities),appearance:normalizeAppearance(input.appearance)};
+  const config={title:'Planning',calendar:'',language:'auto',demo:!input.calendar,...input,entities:selectedPlanningEntities(input.entities),appearance:normalizeAppearance(input.appearance)};
+  planningLanguage(config.language);
   if(config.calendar && !/^calendar\.[a-z0-9_]+$/.test(config.calendar)) throw new Error('Choisissez un calendrier Home Assistant.');
   if(config.execution_automation && !/^automation\.[a-z0-9_]+$/.test(config.execution_automation)) throw new Error('Automatisation invalide.');
   delete config.groups; delete config.closure_calendar; delete config.devices;
