@@ -1,11 +1,12 @@
 {
   "name": "ha-planning-card",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "description": "Home Assistant planning dashboard card",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "preview": "node scripts/preview.mjs",
     "test": "node --test test/*.test.mjs",
     "check": "node --check dist/ha-planning-card.js"
   },

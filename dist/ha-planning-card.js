@@ -1,7 +1,7 @@
-/* Planning 0.5.0 | Euro-Locks Belgium */
+/* Planning 0.6.0 | Euro-Locks Belgium */
 (() => {
 'use strict';
-const VERSION = "0.5.0";
+const VERSION = "0.6.0";
 
 const MIN_LEAD_MINUTES = 20;
 const META_VERSION = 1;
@@ -353,486 +353,507 @@ const PlanningCalendarViews = {
   },
 };
 
-const STYLES = "\n#planning-root{--ha-bg:light-dark(#f5f6f8,#111315);--ha-surface:light-dark(#fff,#1d1f21);--ha-text:light-dark(#18252c,#e8edf0);--ha-muted:light-dark(#53636d,#a6b2bb);--ha-border:light-dark(#dce3e8,#363b40);--ha-accent:light-dark(#006e8c,#32c5eb);--ha-accent-text:light-dark(#fff,#002c39);--ha-accent-soft:light-dark(#e7f6fb,#17353d);--ha-purple:light-dark(#7251a8,#c3a5f1);--ha-purple-soft:light-dark(#f1ecfa,#30263f);--ha-orange:light-dark(#8c4c09,#f0bb73);--ha-orange-soft:light-dark(#fff2df,#3b3021);--ha-error:light-dark(#b52f3f,#ffadb5);--ha-error-soft:light-dark(#fff0f0,#3c2429);--ha-inset:light-dark(#edf1f4,#292d31);color:var(--ha-text);background:var(--ha-bg);font:14px/1.45 \"Segoe UI\",Arial,sans-serif;border:1px solid var(--ha-border);border-radius:14px;overflow:hidden;position:relative;isolation:isolate;color-scheme:inherit}\n#planning-root *{box-sizing:border-box}#planning-root [hidden]{display:none!important}#planning-root h1,#planning-root h2,#planning-root h3,#planning-root p{margin:0}#planning-root h1{font-size:25px;font-weight:500;letter-spacing:-.6px}#planning-root h2{font-size:17px;font-weight:500}#planning-root h3{font-size:15px;font-weight:500}#planning-root button,#planning-root input,#planning-root select{font:inherit}#planning-root button{color:inherit}#planning-root button:focus-visible,#planning-root input:focus-visible,#planning-root select:focus-visible{outline:2px solid var(--ha-accent);outline-offset:3px}#planning-root svg{width:18px;height:18px;flex-shrink:0}#planning-root .ha-secondary{color:var(--ha-muted);font-size:12px}#planning-root .ha-appbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 24px;background:var(--ha-surface);border-bottom:1px solid var(--ha-border);padding-right:108px}#planning-root .ha-brand{display:flex;gap:10px;align-items:center;font-weight:500;flex-wrap:wrap}#planning-root .ha-brand>svg{color:var(--ha-accent)}#planning-root .ha-slash{color:var(--ha-muted);font-weight:400}#planning-root .ha-preview{color:var(--ha-muted);font-size:12px;white-space:nowrap}#planning-root .ha-main{padding:24px}#planning-root .ha-heading{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;flex-wrap:wrap}#planning-root .ha-heading p{margin-top:5px}#planning-root .ha-actions{display:flex;gap:8px;flex-wrap:wrap}#planning-root .ha-button{display:inline-flex;gap:7px;align-items:center;justify-content:center;border:1px solid var(--ha-border);border-radius:8px;background:var(--ha-surface);padding:10px 13px;min-height:40px;font-weight:500;white-space:normal;text-align:center}#planning-root .ha-button:hover{background:var(--ha-inset)}#planning-root .ha-primary{background:var(--ha-accent);border-color:var(--ha-accent);color:var(--ha-accent-text)}#planning-root .ha-primary:hover{background:var(--ha-accent);filter:brightness(.95)}#planning-root .ha-button:disabled{opacity:.45;cursor:not-allowed}#planning-root .ha-small{font-size:12px;padding:7px 9px;min-height:32px}#planning-root .ha-iconbutton{background:transparent;border:1px solid var(--ha-border);border-radius:7px;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:7px}#planning-root .ha-demo{display:flex;gap:8px;align-items:center;color:var(--ha-muted);font-size:12px;margin:18px 0 14px}#planning-root .ha-demo svg{width:15px;height:15px}#planning-root .ha-tabs{display:flex;gap:22px;border-bottom:1px solid var(--ha-border);margin-bottom:20px}#planning-root .ha-tabs button{border:0;border-bottom:2px solid transparent;padding:10px 0;background:transparent;color:var(--ha-muted);font-weight:500}#planning-root .ha-tabs button[aria-selected=true]{color:var(--ha-accent);border-bottom-color:var(--ha-accent)}#planning-root .ha-workspace{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:18px;align-items:start}#planning-root .ha-calendar{border:1px solid var(--ha-border);border-radius:10px;background:var(--ha-surface);overflow:hidden;min-width:0}#planning-root .ha-monthbar{padding:15px;display:flex;justify-content:space-between;gap:8px;align-items:center}#planning-root .ha-month-title{display:flex;flex-direction:column;gap:2px}#planning-root .ha-monthnav{display:flex;gap:6px}#planning-root .ha-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));text-align:right;color:var(--ha-muted);font-size:11px;padding:0 7px 8px}#planning-root .ha-days span{padding-right:6px}#planning-root .ha-monthgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--ha-border)}#planning-root .ha-day{background:var(--ha-surface);border:0;border-right:1px solid var(--ha-border);border-bottom:1px solid var(--ha-border);min-height:91px;min-width:0;display:flex;flex-direction:column;gap:3px;padding:6px 4px;text-align:left;position:relative}#planning-root .ha-day:nth-child(7n){border-right:0}#planning-root .ha-day:hover{background:var(--ha-inset)}#planning-root .ha-day.outside{color:var(--ha-muted);background:var(--ha-bg)}#planning-root .ha-day.closed{background:var(--ha-orange-soft)}#planning-root .ha-day.selected{box-shadow:inset 0 0 0 2px var(--ha-accent);z-index:1}#planning-root .ha-date{align-self:flex-end;min-width:23px;text-align:center;font-size:12px;line-height:23px;border-radius:50%}#planning-root .ha-day.selected .ha-date{background:var(--ha-accent);color:var(--ha-accent-text)}#planning-root .ha-dayevent{display:block;border-radius:3px;padding:2px 4px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;background:var(--ha-accent-soft);color:var(--ha-accent);font-weight:500}#planning-root .ha-dayevent.exceptional{background:var(--ha-purple-soft);color:var(--ha-purple)}#planning-root .ha-dayevent.cancelled{background:var(--ha-inset);color:var(--ha-muted);text-decoration:line-through}#planning-root .ha-closed-label{color:var(--ha-orange);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#planning-root .ha-legend{padding:12px;display:flex;gap:10px 13px;flex-wrap:wrap;font-size:11px;color:var(--ha-muted)}#planning-root .ha-legend>span{display:flex;align-items:center;gap:5px}#planning-root .ha-dot{display:inline-block;flex-shrink:0;width:7px;height:7px;border-radius:2px;background:var(--ha-accent)}#planning-root .ha-dot.exceptional{background:var(--ha-purple)}#planning-root .ha-dot.closure{background:var(--ha-orange)}#planning-root .ha-dot.blocked{background:var(--ha-muted)}#planning-root .ha-sidebar{display:flex;flex-direction:column;gap:14px;min-width:0}#planning-root .ha-panel{border:1px solid var(--ha-border);border-radius:10px;padding:16px;background:var(--ha-surface);min-width:0}#planning-root .ha-panel-title{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:12px}#planning-root .ha-panel .ha-eyebrow{font-size:11px;color:var(--ha-muted);text-transform:uppercase;letter-spacing:.7px;display:block;margin-bottom:4px}#planning-root .ha-launch{padding:13px 0;border-top:1px solid var(--ha-border)}#planning-root .ha-launchhead{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:500}#planning-root .ha-time{font-variant-numeric:tabular-nums;white-space:nowrap}#planning-root .ha-launch p{font-size:12px;color:var(--ha-muted);margin-top:3px}#planning-root .ha-badge{display:inline-block;padding:3px 7px;border-radius:5px;background:var(--ha-accent-soft);color:var(--ha-accent);font-size:11px;margin-top:8px;font-weight:500}#planning-root .ha-badge.exceptional{background:var(--ha-purple-soft);color:var(--ha-purple)}#planning-root .ha-badge.cancelled{background:var(--ha-inset);color:var(--ha-muted)}#planning-root .ha-rowactions{display:flex;gap:12px;flex-wrap:wrap;margin-top:9px}#planning-root .ha-textbutton{background:transparent;border:0;padding:3px 0;color:var(--ha-accent);font-size:12px;font-weight:500;text-align:left}#planning-root .ha-textbutton.danger{color:var(--ha-error)}#planning-root .ha-rule{display:flex;gap:8px;color:var(--ha-muted);font-size:12px;padding:0 3px}#planning-root .ha-rule svg{width:16px;height:16px;margin-top:1px}#planning-root .ha-closure-item{padding-top:12px;border-top:1px solid var(--ha-border);margin-top:12px}#planning-root .ha-closure-item:first-of-type{margin-top:0}#planning-root .ha-closure-item h3{color:var(--ha-orange);font-size:14px}#planning-root .ha-closure-item p{font-size:12px;color:var(--ha-muted);margin-top:5px}#planning-root .ha-field{display:flex;flex-direction:column;gap:5px;margin-bottom:13px;font-size:12px;font-weight:500}#planning-root .ha-field input,#planning-root .ha-field select{padding:9px 10px;border:1px solid var(--ha-border);border-radius:6px;background:var(--ha-bg);color:var(--ha-text);width:100%;min-width:0;font-size:14px;font-weight:400}#planning-root .ha-fieldpair{display:grid;grid-template-columns:minmax(0,1fr) 94px;gap:9px}#planning-root .ha-check{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:var(--ha-muted);margin:2px 0 14px}#planning-root .ha-check input{margin-top:3px;accent-color:var(--ha-accent)}#planning-root .ha-editor .ha-actions{margin-top:15px}#planning-root .ha-summary{padding:12px;background:var(--ha-accent-soft);border-radius:7px;font-size:12px;overflow-wrap:anywhere}#planning-root .ha-summary strong{display:block;font-weight:500;font-size:14px;margin-bottom:5px}#planning-root .ha-error{background:var(--ha-error-soft);color:var(--ha-error);padding:10px;border-radius:6px;font-size:12px;margin-top:12px}#planning-root .ha-feedback{color:var(--ha-accent);font-size:12px;min-height:18px;margin-top:12px}#planning-root .ha-footer{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;color:var(--ha-muted);font-size:11px;padding-top:12px;border-top:1px solid var(--ha-border);margin-top:10px}#planning-root .ha-footer>span:first-child{display:flex;gap:6px;align-items:center}#planning-root .ha-footer svg{width:13px;height:13px}#planning-root .ha-weekly-head{margin-bottom:18px}#planning-root .ha-weekly-head p{margin-top:5px}#planning-root .ha-weeklyrow{display:grid;grid-template-columns:1fr 145px 115px auto;gap:16px;align-items:center;padding:18px;background:var(--ha-surface);border:1px solid var(--ha-border);border-radius:10px;margin-bottom:12px}#planning-root .ha-weeklyrow .ha-field{margin:0}#planning-root .ha-empty{padding:12px 0;color:var(--ha-muted);font-size:12px}#planning-root .ha-mobile-events{display:none}\n@media(max-width:860px){#planning-root .ha-main{padding:18px}#planning-root .ha-workspace{grid-template-columns:minmax(0,1fr) 255px;gap:12px}#planning-root .ha-day{min-height:84px}#planning-root .ha-dayevent{padding:2px;font-size:11px}#planning-root .ha-appbar{padding-left:18px}}\n@media(max-width:700px){#planning-root .ha-workspace{grid-template-columns:1fr}#planning-root .ha-sidebar{display:grid;grid-template-columns:1fr 1fr;align-items:start}#planning-root .ha-sidebar>.ha-rule{grid-column:1/-1}#planning-root .ha-preview{display:none}#planning-root .ha-weeklyrow{grid-template-columns:1fr 1fr}#planning-root .ha-weeklyrow>div:first-child{grid-column:1/-1}#planning-root .ha-weeklyrow>.ha-check{grid-column:1/-1}}\n@media(max-width:440px){#planning-root .ha-appbar{padding:14px 12px;padding-right:80px}#planning-root .ha-brand{gap:7px;font-size:12px}#planning-root .ha-brand span:last-child{display:none}#planning-root .ha-slash{display:none}#planning-root .ha-main{padding:14px 10px}#planning-root h1{font-size:23px}#planning-root .ha-actions{width:100%}#planning-root .ha-heading .ha-actions .ha-button{width:100%;justify-content:flex-start}#planning-root .ha-sidebar{grid-template-columns:1fr}#planning-root .ha-day{min-height:73px;padding:5px 2px}#planning-root .ha-date{font-size:11px;min-width:20px;line-height:20px}#planning-root .ha-dayevent{display:none}#planning-root .ha-mobile-events{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:6px}#planning-root .ha-closed-label{font-size:11px}#planning-root .ha-day.closed .ha-closed-label{font-size:0}#planning-root .ha-day.closed .ha-closed-label:after{content:'Exclu';font-size:11px}#planning-root .ha-legend{gap:8px 12px}#planning-root .ha-footer{gap:5px}#planning-root .ha-field input,#planning-root .ha-field select{font-size:16px}}\n@media(pointer:coarse){#planning-root .ha-iconbutton{width:44px;height:44px}#planning-root .ha-button,#planning-root .ha-textbutton,#planning-root .ha-tabs button{min-height:44px}}\n\n:host{display:block;color-scheme:light}:host([dark]){color-scheme:dark}ha-card{overflow:hidden}#planning-root{border:0;border-radius:var(--ha-card-border-radius,12px);--ha-bg:var(--primary-background-color);--ha-surface:var(--card-background-color);--ha-text:var(--primary-text-color);--ha-muted:var(--secondary-text-color);--ha-border:var(--divider-color);--ha-accent:var(--primary-color);--ha-accent-text:var(--text-primary-color,#fff)}#planning-root .ha-error:empty,#planning-root .ha-feedback:empty{display:none}#planning-root .ha-top-error{margin-bottom:15px}#planning-root .ha-panel button{max-width:100%}#planning-root .ha-weeklyrow{grid-template-columns:1fr auto}#planning-root .ha-note{margin-top:8px}#planning-root .ha-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px}#planning-root .ha-wide{grid-column:1/-1}#planning-root .ha-confirm-delete{margin-top:12px;padding-top:12px;border-top:1px solid var(--ha-border)}#planning-root .ha-list-empty{min-height:70px}#planning-root .ha-button:disabled{pointer-events:none}#planning-root .ha-weeklyrow p{margin-top:5px}@media(max-width:440px){#planning-root .ha-settings{grid-template-columns:1fr}#planning-root .ha-weeklyrow{grid-template-columns:1fr}#planning-root .ha-weeklyrow .ha-actions{justify-content:flex-start}}\n@container planning (max-width:860px){#planning-root .ha-main{padding:18px}#planning-root .ha-workspace{grid-template-columns:minmax(0,1fr) 255px;gap:12px}#planning-root .ha-day{min-height:84px}#planning-root .ha-dayevent{padding:2px;font-size:11px}#planning-root .ha-appbar{padding-left:18px}}\n\n@container planning (max-width:700px){#planning-root .ha-workspace{grid-template-columns:1fr}#planning-root .ha-sidebar{display:grid;grid-template-columns:1fr 1fr;align-items:start}#planning-root .ha-sidebar>.ha-rule{grid-column:1/-1}#planning-root .ha-preview{display:none}#planning-root .ha-weeklyrow{grid-template-columns:1fr 1fr}#planning-root .ha-weeklyrow>div:first-child{grid-column:1/-1}#planning-root .ha-weeklyrow>.ha-check{grid-column:1/-1}}\n\n@container planning (max-width:440px){#planning-root .ha-appbar{padding:14px 12px;padding-right:80px}#planning-root .ha-brand{gap:7px;font-size:12px}#planning-root .ha-brand span:last-child{display:none}#planning-root .ha-slash{display:none}#planning-root .ha-main{padding:14px 10px}#planning-root h1{font-size:23px}#planning-root .ha-actions{width:100%}#planning-root .ha-heading .ha-actions .ha-button{width:100%;justify-content:flex-start}#planning-root .ha-sidebar{grid-template-columns:1fr}#planning-root .ha-day{min-height:73px;padding:5px 2px}#planning-root .ha-date{font-size:11px;min-width:20px;line-height:20px}#planning-root .ha-dayevent{display:none}#planning-root .ha-mobile-events{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:6px}#planning-root .ha-closed-label{font-size:11px}#planning-root .ha-day.closed .ha-closed-label{font-size:0}#planning-root .ha-day.closed .ha-closed-label:after{content:'Exclu';font-size:11px}#planning-root .ha-legend{gap:8px 12px}#planning-root .ha-footer{gap:5px}#planning-root .ha-field input,#planning-root .ha-field select{font-size:16px}}\n\n@container planning (max-width:440px){#planning-root .ha-settings{grid-template-columns:1fr}#planning-root .ha-weeklyrow{grid-template-columns:1fr}#planning-root .ha-weeklyrow .ha-actions{justify-content:flex-start}}\n:host{container-type:inline-size;container-name:planning;height:100%;min-width:0}ha-card{display:block;height:100%;overflow:auto}#planning-root{height:100%;min-height:620px}#planning-root .ha-main{height:100%;display:flex;flex-direction:column;min-height:0}#planning-root .ha-setup{margin-bottom:12px}#planning-root #calendar-panel{flex:1;min-height:440px}#planning-root .ha-workspace{height:100%;align-items:stretch}#planning-root .ha-calendar{display:flex;flex-direction:column;min-height:440px}#planning-root .ha-monthgrid{flex:1;grid-template-rows:repeat(var(--planning-week-rows,6),minmax(70px,1fr))}#planning-root .ha-day{min-height:0}#planning-root .ha-footer{margin-top:auto;padding-top:12px}#planning-root .ha-feedback{flex-shrink:0}@container planning (max-width:700px){#planning-root{height:auto;min-height:100%}#planning-root .ha-main{height:auto;min-height:100%}#planning-root #calendar-panel{flex:none}#planning-root .ha-workspace{height:auto}#planning-root .ha-calendar{min-height:520px}}\n#planning-root .ha-time-inputs{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0}#planning-root .ha-device-picker{border:1px solid var(--ha-border);border-radius:10px;padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}#planning-root .ha-device-picker legend{padding:0 5px;font-weight:600}#planning-root .ha-device-picker .ha-check{margin:0;padding:6px;align-items:center;min-width:0}#planning-root .ha-device-picker input{flex-shrink:0}#planning-root .ha-field input[type=color]{width:100%;min-height:40px;padding:4px}#planning-root .ha-weekly-group{padding:14px 0;border-bottom:1px solid var(--ha-border)}#planning-root .ha-weekly-group>.ha-button{margin-top:12px}#planning-root .ha-weeklyrow,#planning-root .ha-launch{border-inline-start:4px solid var(--event-color,#3689e6);padding-inline-start:12px}#planning-root .ha-color-swatch{display:inline-block;width:10px;height:10px;background:var(--event-color);border-radius:50%;margin-inline-end:7px}#planning-root .ha-dayevent.regular,#planning-root .ha-dayevent.exceptional{background:var(--event-color);color:var(--event-text);border-color:var(--event-color)}#planning-root .ha-dot.regular,#planning-root .ha-dot.exceptional{background:var(--event-color,#3689e6)}#planning-root .ha-device-summary{font-size:13px;overflow-wrap:anywhere}@container planning (max-width:440px){#planning-root .ha-device-picker{grid-template-columns:1fr}}\n#planning-root .ha-time-inputs{grid-column:1/-1}#planning-root #calendar-panel{overflow:auto}#planning-root .ha-footer{flex-shrink:0}@container planning (min-width:701px){#planning-root .ha-workspace{grid-template-rows:minmax(0,1fr)}#planning-root .ha-sidebar{min-height:0;overflow-y:auto;scrollbar-width:thin}}\n#planning-root .ha-tabs{flex-wrap:wrap}#planning-root .ha-devices-head{display:flex;gap:16px;justify-content:space-between;align-items:center;margin:16px 0}#planning-root .ha-device-list{display:grid;gap:12px;margin-top:16px}#planning-root .ha-device-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px;background:var(--ha-surface);border:1px solid var(--ha-border);border-radius:10px;overflow-wrap:anywhere}#planning-root .ha-device-editor{max-width:700px;margin:16px 0}#planning-root .ha-device-editor h3{margin-bottom:14px}#planning-root .ha-device-editor p{margin:10px 0}#planning-root .ha-device-notice{padding:12px 0;display:flex;align-items:center;gap:12px;flex-wrap:wrap}#planning-root .ha-calendar-views{display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap;border-bottom:1px solid var(--ha-border)}#planning-root .ha-calendar-views [aria-pressed=true]{background:var(--ha-accent-soft);color:var(--ha-accent);text-decoration:underline;text-underline-offset:4px}#planning-root .ha-days,#planning-root .ha-monthgrid{grid-template-columns:repeat(var(--planning-columns,7),minmax(0,1fr))}#planning-root .ha-weekgrid{display:grid;grid-template-columns:repeat(var(--planning-columns,7),minmax(0,1fr));flex:1}#planning-root .ha-weekday{padding:8px;min-width:0;border-inline-end:1px solid var(--ha-border)}#planning-root .ha-weekday.selected{background:var(--ha-accent-soft)}#planning-root .ha-weekday-label{font:inherit;font-size:12px;font-weight:600;width:100%;border:0;background:transparent;color:var(--ha-text);padding:8px 0;text-align:start;overflow-wrap:anywhere}#planning-root .ha-view-event{display:flex;flex-direction:column;gap:5px;text-align:start;width:100%;font:inherit;color:var(--ha-text);border:1px solid var(--ha-border);border-inline-start:4px solid var(--event-color);background:var(--ha-bg);border-radius:7px;padding:9px;margin:9px 0;overflow-wrap:anywhere}#planning-root .ha-view-event .ha-secondary{font-size:11px}#planning-root .ha-view-event.cancelled{opacity:.65;text-decoration:line-through}#planning-root .ha-view-time{font-weight:600}#planning-root .ha-agenda{padding:14px}#planning-root .ha-agenda-day{margin-bottom:18px}#planning-root .ha-agenda-day h3{margin-bottom:8px}#planning-root[data-density=compact] .ha-main{padding:14px}#planning-root[data-density=compact] .ha-day{padding:5px}#planning-root[data-density=compact] .ha-view-event{padding:6px;gap:3px;margin:5px 0}#planning-root[data-density=compact] .ha-device-row{padding:10px}#planning-root[data-event-style=outline] .ha-dayevent:not(.cancelled){background:var(--ha-surface);color:var(--ha-text);border:1px solid var(--event-color)}#planning-root[data-event-style=dot] .ha-dayevent:not(.cancelled){background:transparent;color:var(--ha-text);border:0;border-inline-start:4px solid var(--event-color);border-radius:0}#planning-root .ha-weekday .ha-empty{font-size:12px}@container planning (max-width:1000px){#planning-root .ha-weekgrid{grid-template-columns:1fr}#planning-root .ha-weekday{border-inline-end:0;border-bottom:1px solid var(--ha-border)}}@container planning (max-width:700px){#planning-root .ha-devices-head,#planning-root .ha-device-row{flex-direction:column;align-items:stretch}#planning-root .ha-device-row .ha-actions{flex-wrap:wrap}#planning-root .ha-device-editor{max-width:none}}\n#planning-root[data-event-style=filled] .ha-view-event:not(.cancelled){background:color-mix(in srgb,var(--event-color) 12%,var(--ha-bg))}#planning-root[data-event-style=outline] .ha-view-event:not(.cancelled){border-color:var(--event-color);background:var(--ha-bg)}#planning-root[data-event-style=dot] .ha-view-event:not(.cancelled){border-inline-start:1px solid var(--ha-border)}#planning-root[data-event-style=dot] .ha-view-event .ha-view-time:before{content:\"\";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--event-color);margin-inline-end:7px}";
 
-class PlanningChauffeEditor extends HTMLElement {
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-    this.shadowRoot.addEventListener('change', e => this._change(e));
-    this.shadowRoot.addEventListener('click', e => this._groups(e));
-  }
-  set hass(value) { this._hass = value; if (!this._rendered) this._render(); }
-  setConfig(value) { this._config = { demo: true, ...value, title: value.title === 'Planning de chauffe' ? 'Planning' : value.title, appearance: normalizeAppearance(value.appearance), devices: (value.devices || []).map(d => ({...d})), groups: (value.groups || DEFAULT_GROUPS).map(g => ({ name: g.name || '', calendar: g.calendar || '' })) }; this._render(); }
-  _emit() { this.dispatchEvent(new CustomEvent('config-changed', { bubbles: true, composed: true, detail: { config: { ...this._config, appearance: {...this._config.appearance}, devices: this._config.devices.map(d => ({ ...d })), groups: this._config.groups.map(g => ({ ...g })) } } })); }
-  _groups(event) {
-    const button = event.target.closest('button');
-    if (!button || button.disabled) return;
-    if (button.dataset.action === 'add-device') { this._config.devices.push({ id: '', name: '' }); this._emit(); this._render(); return; }
-    if (button.dataset.removeDevice !== undefined) { this._config.devices.splice(Number(button.dataset.removeDevice), 1); this._emit(); this._render(); return; }
-    if (button.dataset.action === 'add-group' && this._config.groups.length < 8) this._config.groups.push({ name: '', calendar: '' });
-    else if (button.dataset.remove !== undefined) this._config.groups.splice(Number(button.dataset.remove), 1);
-    else return;
-    this._emit(); this._render();
-  }
-  _change(event) {
-    const el = event.target;
-    if (!el.dataset.field) return;
-    const value = el.type === 'checkbox' ? el.checked : el.value;
-    if (el.dataset.appearance) { this._config.appearance[el.dataset.field] = el.dataset.field === 'first_day' ? Number(value) : value; this._emit(); return; }
-    if (el.dataset.field === 'custom_accent') { this._config.appearance.accent_color = value ? '#03a9f4' : ''; this._emit(); this._render(); return; }
-    if (el.dataset.device !== undefined) this._config.devices[Number(el.dataset.device)][el.dataset.field] = value;
-    else if (el.dataset.group !== undefined) this._config.groups[Number(el.dataset.group)][el.dataset.field] = value;
-    else this._config[el.dataset.field] = value;
-    if (el.dataset.field === 'calendar' && el.dataset.group === undefined && value) this._config.demo = false;
-    this._emit();
-    if (el.dataset.field === 'demo' || el.dataset.field === 'calendar' || el.dataset.field === 'execution_automation') this._render();
-  }
-  _render() {
-    if (!this._config || !this._hass) return;
-    this._rendered = true;
-    const calendars = Object.values(this._hass.states || {}).filter(s => s.entity_id.startsWith('calendar.'));
-    const automations = Object.values(this._hass.states || {}).filter(e => e.entity_id.startsWith('automation.'));
-    const appearance = this._config.appearance;
-    const optionSelect = (label,field,options) => `<label>${label}<select data-appearance="true" data-field="${field}">${Object.entries(options).map(([value,text]) => `<option value="${value}" ${String(appearance[field]) === value ? 'selected' : ''}>${text}</option>`).join('')}</select></label>`;
-    const legacy = !this._config.calendar && !!this._config.closure_calendar;
-    const select = (label, field, value, index) => `<label>${label}<select data-field="${field}" ${index === undefined ? '' : `data-group="${index}"`}><option value="">Choisir un calendrier</option>${calendars.map(s => `<option value="${esc(s.entity_id)}" ${value === s.entity_id ? 'selected' : ''}>${esc(s.attributes.friendly_name || s.entity_id)} (${esc(s.entity_id)})</option>`).join('')}</select></label>`;
-    this.shadowRoot.innerHTML = `<style>:host{display:block;color:var(--primary-text-color)}label{display:flex;flex-direction:column;gap:6px;margin:12px 0;font:inherit}input,select,button{font:inherit;padding:10px;box-sizing:border-box;color:var(--primary-text-color);background:var(--secondary-background-color);border:1px solid var(--divider-color);border-radius:6px}input,select{width:100%}.check{flex-direction:row;align-items:center}.check input{width:auto}p{color:var(--secondary-text-color);font-size:13px}fieldset{border:1px solid var(--divider-color);border-radius:8px;margin:15px 0;padding:12px}legend{padding:0 5px}button{min-height:40px}button:disabled{opacity:.5}</style>
-      <label>Titre<input data-field="title" value="${esc(this._config.title || 'Planning')}"></label>
-      ${select('Calendrier du planning', 'calendar', this._config.calendar)}
-      <p>Un seul calendrier contient les programmations et les exclusions. Aucun groupe n’est nécessaire pour commencer.</p>
-      <label class="check"><input type="checkbox" data-field="demo" ${this._config.demo ? 'checked' : ''}>Mode local (sans enregistrement Home Assistant)</label>
-      <p>Choisir un calendrier active le mode connecté. Le mode local permet de tester sans enregistrer d’événement.</p>
-      <label>Automatisation des appareils<select data-field="execution_automation"><option value="">Gestion manuelle existante</option>${automations.map(e => `<option value="${esc(e.entity_id)}" ${e.entity_id === this._config.execution_automation ? 'selected' : ''}>${esc(e.attributes.friendly_name || e.entity_id)}</option>`).join('')}</select></label>
-      <p>Pour gérer les appareils depuis la carte, sélectionner l’automatisation créée avec le nouveau blueprint « Planning — appareils configurables ». Les appareils se gèrent ensuite dans l’onglet Appareils.</p>
-      <details><summary>Personnalisation</summary>
-      ${optionSelect('Vue initiale','default_view',{month:'Mois',week:'Semaine',agenda:'Agenda'})}
-      ${optionSelect('Premier jour','first_day',{'1':'Lundi','0':'Dimanche'})}
-      ${optionSelect('Format des heures','time_format',{'24':'24 heures','12':'12 heures'})}
-      ${optionSelect('Densité','density',{comfortable:'Confortable',compact:'Compacte'})}
-      ${optionSelect('Style des événements','event_style',{filled:'Fond coloré',outline:'Contour coloré',dot:'Repère de couleur'})}
-      <label class="check"><input type="checkbox" data-appearance="true" data-field="show_weekends" ${appearance.show_weekends ? 'checked' : ''}>Afficher les week-ends</label>
-      <label class="check"><input type="checkbox" data-appearance="true" data-field="show_device_names" ${appearance.show_device_names ? 'checked' : ''}>Noms des appareils en vues semaine et agenda</label>
-      <label class="check"><input type="checkbox" data-field="custom_accent" ${appearance.accent_color ? 'checked' : ''}>Couleur d’accent personnalisée</label>
-      ${appearance.accent_color ? `<label>Couleur d’accent<input type="color" data-appearance="true" data-field="accent_color" value="${appearance.accent_color}"></label>` : ''}
-      </details>
-      <div ${this._config.execution_automation ? 'hidden' : ''}><details ${this._config.devices.length ? 'open' : ''}><summary>Appareils programmables</summary>
-      <p>Configuration initiale : mêmes identifiants que dans le catalogue du blueprint. Ensuite, chaque utilisateur coche les appareils dans ses programmations.</p>
-      ${this._config.devices.map((d, i) => `<fieldset><legend>Appareil ${i + 1}</legend><label>Nom affiché<input data-field="name" data-device="${i}" value="${esc(d.name)}"></label><label>Identifiant<input data-field="id" data-device="${i}" pattern="[a-z0-9_]+" value="${esc(d.id)}"></label><button type="button" data-remove-device="${i}">Retirer cet appareil</button></fieldset>`).join('')}
-      <button type="button" data-action="add-device">Ajouter un appareil</button></details></div>
-      <details ${this._config.groups.length ? 'open' : ''}><summary>Groupes (facultatif)</summary>
-      <p>Uniquement pour distinguer plusieurs ensembles d’appareils dans le même calendrier. Utiliser le même nom dans le filtre de groupe du blueprint.</p>
-      ${legacy ? select('Ancien calendrier des exclusions', 'closure_calendar', this._config.closure_calendar) : ''}
-      ${this._config.groups.map((g, i) => `<fieldset><legend>Groupe ${i + 1}</legend><label>Nom<input data-field="name" data-group="${i}" value="${esc(g.name)}"></label>${legacy && !this._config.demo ? select('Ancien calendrier du groupe', 'calendar', g.calendar, i) : ''}<button type="button" data-remove="${i}">Retirer ce groupe</button></fieldset>`).join('')}
-      <button type="button" data-action="add-group" ${this._config.groups.length >= 8 ? 'disabled' : ''}>Ajouter un groupe</button>
-      <p>Renommer un groupe nécessite de mettre à jour son filtre dans le blueprint. Retirer un groupe de la carte ne supprime aucun événement.</p></details>
-      <p>Taille : dans une vue Sections, utiliser l’onglet Disposition de la carte. Une vue Panneau permet une page pleine largeur.</p>`;
-  }
-}
-if (!customElements.get('ha-planning-chauffe-card-editor')) customElements.define('ha-planning-chauffe-card-editor', PlanningChauffeEditor);
-if (!customElements.get('ha-planning-card-editor')) customElements.define('ha-planning-card-editor', class extends PlanningChauffeEditor {});
 
-const PlanningDeviceUI = {
-  _devices() { return this._deviceCatalog || (this._config.execution_automation ? [] : this._config.devices); },
-  _canManageDevices() { return !this._busy && !this._loading && (this._config.demo || (this._hass.user?.is_admin === true && this._deviceStore && this._deviceSnapshot && this._loaded && !this._error)); },
-  _devicesHtml() {
-    const canManage = this._canManageDevices();
-    const connected = this._config.demo || !!this._config.execution_automation;
-    const devices = this._devices();
-    return `<div class="ha-devices-head"><div><h2>Appareils</h2><p class="ha-secondary">Configurez les appareils, puis choisissez-les dans chaque programmation.</p></div><div class="ha-actions">${this._deviceStore ? this._button('Actualiser la liste','refresh-devices',true) : ''}${this._button('Ajouter un appareil','new-device',false,canManage ? '' : 'disabled')}</div></div>
-      ${!connected ? '<p class="ha-setup">Dans l’éditeur de carte, choisissez l’automatisation du blueprint « Planning — appareils configurables » pour enregistrer les appareils.</p>' : ''}
-      ${!this._config.demo && this._hass.user?.is_admin !== true ? '<p class="ha-secondary">La configuration technique est réservée aux administrateurs. Vous pouvez utiliser les appareils actifs dans vos programmations.</p>' : ''}
-      ${this._deviceSnapshot?.needsPublish ? `<div class="ha-device-notice" role="status">${this._hass.user?.is_admin === true ? 'La liste doit être partagée avec les autres utilisateurs.' : 'La liste n’a pas encore été partagée par un administrateur.'}${canManage ? this._button('Partager la liste','publish-devices',true) : ''}</div>` : ''}
-      ${this._deviceDraft ? this._deviceEditorHtml() : ''}
-      ${!devices.length ? '<p class="ha-empty">Aucun appareil configuré.</p>' : `<div class="ha-device-list">${devices.map(device => `<article class="ha-device-row"><div><h3>${esc(device.name)} ${device.enabled === false ? '<span class="ha-badge cancelled">Désactivé</span>' : '<span class="ha-badge">Actif</span>'}</h3><p class="ha-secondary">${esc(DEVICE_TYPES[device.type] || 'Appareil existant')}</p>${canManage && device.switch_entity ? `<p>${esc(this._entityLabel(device.switch_entity))}</p>` : ''}${canManage && device.script_entity ? `<p class="ha-secondary">${esc(this._entityLabel(device.script_entity))}</p>` : ''}</div>${canManage ? `<div class="ha-actions"><button type="button" class="ha-button" data-device-edit="${esc(device.id)}">Modifier l’appareil</button><button type="button" class="ha-textbutton danger" data-device-delete="${esc(device.id)}">Supprimer</button></div>` : ''}</article>`).join('')}</div>`}
-      ${this._deviceError ? `<div class="ha-error" role="alert">${esc(this._deviceError)}</div>` : ''}`;
-  },
-  _entityLabel(entity) { return this._hass.states?.[entity]?.attributes?.friendly_name || entity; },
-  _entitySelect(label, name, domain, value, required = true) {
-    const entities = Object.values(this._hass.states || {}).filter(e => e.entity_id.startsWith(`${domain}.`)).sort((a,b) => (a.attributes.friendly_name || a.entity_id).localeCompare(b.attributes.friendly_name || b.entity_id,'fr',{numeric:true}));
-    if (value && !entities.some(e => e.entity_id === value)) entities.push({entity_id:value,state:'unknown',attributes:{friendly_name:`${value} (indisponible)`}});
-    return `<label class="ha-field ha-wide">${label}<select name="${name}" ${required ? 'required' : ''}><option value="">Choisir une entité</option>${entities.map(e => `<option value="${esc(e.entity_id)}" ${e.entity_id === value ? 'selected' : ''}>${esc(e.attributes.friendly_name || e.entity_id)} (${esc(e.entity_id)})</option>`).join('')}</select></label>`;
-  },
-  _deviceEditorHtml() {
-    const d = this._deviceDraft;
-    if (this._deviceMode === 'delete') return `<section class="ha-panel ha-device-editor"><h3>Supprimer ${esc(d.name)} ?</h3><p>Ses programmations seront conservées. Les démarrages qui contiennent cet appareil seront bloqués.</p><div class="ha-review-buttons">${this._button('Confirmer la suppression','save-device-delete')}${this._button('Annuler','close-device',true)}</div></section>`;
-    if (this._deviceMode === 'review') return `<section class="ha-panel ha-device-editor"><h3>Vérifier l’appareil</h3><p><strong>${esc(d.name)}</strong> · ${esc(DEVICE_TYPES[d.type])} · ${d.enabled ? 'Actif' : 'Désactivé'}</p>${d.switch_entity ? `<p>Relais : ${esc(this._entityLabel(d.switch_entity))}</p>` : ''}${d.script_entity ? `<p>Script : ${esc(this._entityLabel(d.script_entity))}</p>` : ''}${d.type === 'frech' ? `<p>Entrée : ${esc(this._entityLabel(d.input_entity))} · Frech ${d.frech_number}</p>` : ''}<p class="ha-secondary">${this._config.demo ? 'Enregistrement local uniquement.' : 'La configuration de l’automatisation sera enregistrée et rechargée. Aucun appareil ne sera commandé par cet enregistrement.'}</p><div class="ha-review-buttons">${this._button(this._busy ? 'Enregistrement…' : 'Enregistrer l’appareil','save-device')}${this._button('Retour','back-device',true)}</div></section>`;
-    return `<section class="ha-panel ha-device-editor"><h3>${this._deviceOriginal ? 'Modifier un appareil' : 'Ajouter un appareil'}</h3><form data-device-form><div class="ha-settings">
-      <label class="ha-field ha-wide">Nom affiché<input name="name" value="${esc(d.name)}" required maxlength="120"></label>
-      <label class="ha-field ha-wide">Type de démarrage<select name="type" required><option value="">Choisir un type</option>${Object.entries(DEVICE_TYPES).map(([id,name]) => `<option value="${id}" ${id === d.type ? 'selected' : ''}>${name}</option>`).join('')}</select></label>
-      ${d.type && d.type !== 'script' ? this._entitySelect('Relais à commander','switch_entity','switch',d.switch_entity) : ''}
-      ${d.type && d.type !== 'switch' ? this._entitySelect(d.type === 'frech' ? 'Script de démarrage Frech' : 'Script à exécuter','script_entity','script',d.script_entity) : ''}
-      ${d.type === 'frech' ? this._entitySelect('Entrée de contrôle','input_entity','binary_sensor',d.input_entity) + `<label class="ha-field">Numéro Frech<input name="frech_number" type="number" min="1" max="21" step="1" value="${esc(d.frech_number ?? '')}" required></label>` : ''}
-      <label class="ha-check ha-wide"><input type="checkbox" name="enabled" ${d.enabled ? 'checked' : ''}>Appareil actif dans les programmations</label>
-      </div><div class="ha-review-buttons">${this._button('Vérifier l’appareil','review-device')}${this._button('Annuler','close-device',true)}</div></form></section>`;
-  },
-  _readDeviceForm() {
-    const form = this._q('form[data-device-form]');
-    if (!form) return this._deviceDraft;
-    const data = new FormData(form);
-    return { ...this._deviceDraft, name: String(data.get('name') || '').trim(), type: data.get('type') || '', switch_entity: data.get('switch_entity') || '', script_entity: data.get('script_entity') || '', input_entity: data.get('input_entity') || '', frech_number: data.get('frech_number') ? Number(data.get('frech_number')) : undefined, enabled: data.get('enabled') === 'on' };
-  },
-  _openDevice(device, remove = false) {
-    if (!this._canManageDevices()) return;
-    this._editor = null; this._deviceError = ''; this._deviceOriginal = device ? {...device} : null;
-    this._deviceEditSnapshot = this._deviceSnapshot;
-    this._deviceDraft = device ? {...device,enabled:device.enabled !== false} : {id:`device_${newEventId().replaceAll('-','_')}`,name:'',type:'',enabled:true};
-    this._deviceMode = remove ? 'delete' : 'form'; this._view = 'devices'; this._render();
-  },
-  _reviewDevice() {
-    if (!this._canManageDevices() || this._deviceMode !== 'form') return;
-    const form = this._q('form[data-device-form]');
-    if (!form?.reportValidity()) return;
-    this._deviceDraft = this._readDeviceForm();
-    this._deviceError = validateDevice(this._deviceDraft);
-    if (!this._deviceError) this._deviceMode = 'review';
-    this._render();
-  },
-  async _saveDevice(remove = false) {
-    if (!this._canManageDevices()) return;
-    this._busy = true; this._deviceError = ''; this._render();
-    try {
-      const d = this._deviceDraft;
-      if (!d || (remove ? this._deviceMode !== 'delete' : this._deviceMode !== 'review')) throw new Error('Vérifiez l’appareil avant d’enregistrer.');
-      let devices = remove ? this._devices().filter(device => device.id !== d.id) : this._devices().map(device => device.id === d.id ? {...d,...deviceRecord(d)} : device);
-      if (!remove && !devices.some(device => device.id === d.id)) devices.push({...d,...deviceRecord(d)});
-      if (this._config.demo) this._deviceCatalog = devices;
-      else {
-        this._deviceSnapshot = await this._deviceStore.save(this._deviceEditSnapshot, devices);
-        this._deviceCatalog = this._deviceSnapshot.devices;
-      }
-      this._deviceDraft = null; this._message = remove ? 'Appareil supprimé du catalogue.' : 'Appareil enregistré. Vous pouvez le choisir dans vos programmations.';
-      if (this._deviceSnapshot?.needsPublish) this._message += ' La configuration est enregistrée ; utilisez « Partager la liste » pour actualiser les autres utilisateurs.';
-    } catch (error) { this._deviceError = this._errorText(error); }
-    finally { this._busy = false; this._render(); }
-  },
-  async _publishDevices() {
-    if (!this._canManageDevices()) return;
-    this._busy = true; this._deviceError = ''; this._render();
-    try {
-      const fresh = await this._deviceStore.load();
-      await this._deviceStore.publish(fresh.devices);
-      this._deviceSnapshot = {...fresh,needsPublish:false}; this._deviceCatalog = fresh.devices; this._message = 'Liste des appareils partagée.';
-    } catch (error) { this._deviceError = this._errorText(error); }
-    finally { this._busy = false; this._render(); }
-  },
-  _deviceClick(button) {
-    if (button.dataset.deviceEdit) { const device = this._devices().find(d => d.id === button.dataset.deviceEdit); if (device) this._openDevice(device); return true; }
-    if (button.dataset.deviceDelete) { const device = this._devices().find(d => d.id === button.dataset.deviceDelete); if (device) this._openDevice(device,true); return true; }
-    switch (button.dataset.action) {
-      case 'new-device': this._openDevice(); return true;
-      case 'review-device': this._reviewDevice(); return true;
-      case 'save-device': void this._saveDevice(); return true;
-      case 'save-device-delete': void this._saveDevice(true); return true;
-      case 'publish-devices': void this._publishDevices(); return true;
-      case 'open-devices': this._editor=null; this._view='devices'; this._render(); return true;
-      case 'refresh-devices': this._deviceDraft=null; this._deviceError=''; void this._load(); return true;
-      case 'back-device': this._deviceMode='form'; this._deviceError=''; this._render(); return true;
-      case 'close-device': this._deviceDraft=null; this._deviceError=''; this._render(); return true;
-      default: return false;
-    }
-  },
+
+const ACTION_TYPES = {
+  switch: {label:'Interrupteur', operations:{on:'Allumer',off:'Éteindre'}},
+  light: {label:'Éclairage', operations:{on:'Allumer',off:'Éteindre'}},
+  input_boolean: {label:'Commande', operations:{on:'Activer',off:'Désactiver'}},
+  cover: {label:'Barrière / volet', operations:{open:'Ouvrir',close:'Fermer',stop:'Arrêter'}},
+  script: {label:'Script', operations:{run:'Lancer le script'}},
+  scene: {label:'Scène', operations:{run:'Activer la scène'}},
+  button: {label:'Bouton', operations:{press:'Appuyer'}},
+  input_button: {label:'Bouton', operations:{press:'Appuyer'}},
+  frech: {label:'Frech', operations:{start:'Démarrer avec contrôle',off:'Éteindre'}},
 };
+function targetEntity(record) { return record.entity_id || record.switch_entity || record.script_entity || ''; }
+function operationsFor(record) { return ACTION_TYPES[record?.type]?.operations || {}; }
+function defaultOperation(record) { return Object.keys(operationsFor(record))[0] || ''; }
+function oppositeOperation(op) { return ({on:'off',off:'on',open:'close',close:'open',start:'off'})[op] || ''; }
+function simpleActionRecord(entity, name) {
+  const type=entity.split('.')[0];
+  if (!Object.hasOwn(ACTION_TYPES,type) || type === 'frech' || !/^[a-z_]+\.[a-z0-9_]+$/.test(entity)) throw new Error('Choisissez une entité compatible.');
+  return {id:`entity_${entity.replace('.','_')}`,name:name || entity,type,entity_id:entity,enabled:true};
+}
+function validateActionRecord(record) {
+  if (!record || !/^[a-z0-9_]+$/.test(record.id || '') || typeof record.name !== 'string' || !record.name.trim() || record.name.length>120 || typeof record.enabled !== 'boolean' || !Object.hasOwn(ACTION_TYPES,record.type)) return 'Action autorisée invalide.';
+  if (record.type === 'frech') {
+    if (!/^switch\.[a-z0-9_]+$/.test(record.switch_entity || '') || !/^script\.[a-z0-9_]+$/.test(record.script_entity || '') || !/^binary_sensor\.[a-z0-9_]+$/.test(record.input_entity || '') || !Number.isInteger(record.frech_number) || record.frech_number<1 || record.frech_number>21) return 'Configuration du démarrage Frech incomplète.';
+  } else if (!new RegExp(`^${record.type}\\.[a-z0-9_]+$`).test(targetEntity(record))) return 'L’entité ne correspond pas au type d’action.';
+  return '';
+}
+function normalizePlanningConfig(input) {
+  const config={title:'Planning',calendar:'',demo:!input.calendar,...input,appearance:normalizeAppearance(input.appearance)};
+  if(config.calendar && !/^calendar\.[a-z0-9_]+$/.test(config.calendar)) throw new Error('Choisissez un calendrier Home Assistant.');
+  if(config.execution_automation && !/^automation\.[a-z0-9_]+$/.test(config.execution_automation)) throw new Error('Automatisation invalide.');
+  delete config.groups; delete config.closure_calendar; delete config.devices;
+  return config;
+}
+function scheduleMetadata(description) {
+  try {
+    const m=JSON.parse(description || 'null');
+    if(m?.planning !== 2 || m.kind !== 'schedule' || typeof m.id !== 'string' || typeof m.has_end !== 'boolean') return null;
+    const valid=list=>Array.isArray(list) && list.length<=50 && new Set(list.map(a=>a?.target)).size===list.length && list.every(a=>a && /^[a-z0-9_]+$/.test(a.target || '') && ['on','off','open','close','stop','run','press','start'].includes(a.op));
+    if(!valid(m.start_actions) || !m.start_actions.length || !valid(m.end_actions) || (m.has_end !== (m.end_actions.length>0))) return null;
+    return m;
+  } catch {return null;}
+}
+function normalizeSchedule(raw,calendar,zone) {
+  const meta=scheduleMetadata(raw.description), legacy=meta ? null : metadata(raw.description);
+  const start=eventTime(raw.start,zone),end=eventTime(raw.end,zone);
+  return {...raw,calendar,start,end,meta,legacy,role:meta?'schedule':legacy?.kind==='closure'?'legacy-closure':legacy?'legacy':'external',key:`${calendar}|${raw.uid || raw.summary}|${raw.recurrence_id || start}`};
+}
+function recurring(event) {return !!(event.rrule || event.recurrence_id);}
+function sameOccurrence(a,b) {return a.calendar===b.calendar && a.uid===b.uid && (a.recurrence_id || '')===(b.recurrence_id || '');}
+function occurrenceSelector(event,scope='occurrence') {
+  if(!event.uid) throw new Error('Cet événement ne possède pas d’identifiant modifiable.');
+  if(scope==='occurrence' && recurring(event)) {
+    if(typeof event.recurrence_id !== 'string' || !event.recurrence_id) throw new Error('Ce calendrier ne fournit pas l’identifiant de cette occurrence. La série n’a pas été modifiée.');
+    return {uid:event.uid,recurrence_id:event.recurrence_id};
+  }
+  return {uid:event.uid};
+}
+function schedulePayload(draft) {
+  const event={dtstart:draft.start,dtend:draft.end,summary:draft.summary.trim(),description:JSON.stringify({planning:2,kind:'schedule',id:draft.event_id || newEventId(),color:eventColor(draft.color),has_end:!!draft.has_end,start_actions:draft.start_actions,end_actions:draft.has_end?draft.end_actions:[],note:draft.note || ''})};
+  if(draft.rrule && (!draft.uid || draft.scope==='series')) event.rrule=draft.rrule;
+  return {type:`calendar/event/${draft.uid?'update':'create'}`,entity_id:draft.calendar,...(draft.uid?occurrenceSelector(draft,draft.scope):{}),event};
+}
+function occurrenceDeletePayload(event,scope='occurrence') {return {type:'calendar/event/delete',entity_id:event.calendar,...occurrenceSelector(event,scope)};}
+function wallDuration(event,zone) {return (Date.parse(`${localMinute(event.end,zone)}:00Z`)-Date.parse(`${localMinute(event.start,zone)}:00Z`))/60000;}
+function shiftedOccurrence(event,date,minute,zone) {
+  const startWall=`${date}T${minute===undefined?localMinute(event.start,zone).slice(11):`${String(Math.floor(minute/60)).padStart(2,'0')}:${String(minute%60).padStart(2,'0')}`}`;
+  const duration=wallDuration(event,zone),endWall=new Date(Date.parse(`${startWall}:00Z`)+duration*60000).toISOString().slice(0,16);
+  return {start:toInstant(startWall,zone),end:toInstant(endWall,zone)};
+}
+function activeSlot(event,now=Date.now()) {return !!event.meta?.has_end && Date.parse(event.start)<=now && now<Date.parse(event.end);}
+function mutationIssue(event,scope,events,now=Date.now()) {
+  if((scope==='series'?events.filter(e=>e.uid===event.uid && e.calendar===event.calendar):[event]).some(e=>activeSlot(e,now))) return 'Ce créneau est en cours. Son action de fin est conservée ; modifiez une occurrence future.';
+  return '';
+}
+function validateSchedule(draft,records,now=Date.now(),demo=false) {
+  if(!Number.isFinite(Date.parse(draft.start)) || !Number.isFinite(Date.parse(draft.end)) || Date.parse(draft.end)<=Date.parse(draft.start)) return 'La fin doit être après le début.';
+  if(!demo && Date.parse(draft.start)<now+MIN_LEAD_MINUTES*60000) return `Prévoyez au moins ${MIN_LEAD_MINUTES} minutes avant le début.`;
+  if(!draft.start_actions?.length) return 'Ajoutez au moins une action au début.';
+  if(draft.has_end && !draft.end_actions?.length) return 'Choisissez l’action à exécuter à la fin.';
+  for(const list of [draft.start_actions,draft.has_end?draft.end_actions:[]])if(list.length>50 || new Set(list.map(a=>a.target)).size!==list.length)return 'Choisissez une seule action par appareil à chaque étape (50 maximum).';
+  for(const list of [draft.start_actions,draft.has_end?draft.end_actions:[]]) for(const a of list) {
+    const record=records.find(r=>r.id===a.target);
+    if(!record || record.enabled===false || !Object.hasOwn(operationsFor(record),a.op)) return 'Une action est absente, désactivée ou incompatible. Vérifiez la sélection.';
+  }
+  return '';
+}
+function weeklyStart(date,time,days,zone,now=Date.now(),demo=false) {
+  if(!days.length) throw new Error('Choisissez au moins un jour de répétition.');
+  for(let offset=0;offset<14;offset++) {
+    const day=shiftDay(date,offset);
+    if(days.includes(weekday(day))) {const instant=toInstant(`${day}T${time}`,zone);if(demo || Date.parse(instant)>=now+MIN_LEAD_MINUTES*60000) return instant;}
+  }
+  throw new Error('Choisissez une date de début future.');
+}
+function scheduleFingerprint(event) {return JSON.stringify([event.summary,event.description || '',event.start,event.end,event.rrule || '',event.recurrence_id || '']);}
+function matchesSavedSchedule(event,draft) {
+  const payload=schedulePayload(draft).event;
+  return event.uid===draft.uid && event.start===draft.start && event.end===draft.end && event.summary===payload.summary && JSON.stringify(scheduleMetadata(event.description))===JSON.stringify(scheduleMetadata(payload.description));
+}
+function packWeekEvents(events,zone,pixelsPerHour=48) {
+  const placed=[];
+  for(const event of [...events].sort((a,b)=>a.start.localeCompare(b.start))) {
+    const time=localMinute(event.start,zone).slice(11),minute=Number(time.slice(0,2))*60+Number(time.slice(3));
+    const end=Math.max(minute+35*60/pixelsPerHour,minute+(event.meta?.has_end?Math.max(5,wallDuration(event,zone)):5));
+    let lane=0;while(placed.some(p=>p.lane===lane && p.minute<end && minute<p.visualEnd))lane++;
+    placed.push({event,minute,visualEnd:Math.min(1440,end),lane});
+  }
+  const count=Math.max(1,...placed.map(p=>p.lane+1));return placed.map(p=>({...p,lanes:count}));
+}
 
-class PlanningChauffeCard extends HTMLElement {
-  static getConfigElement() { return document.createElement('ha-planning-card-editor'); }
-  static getStubConfig() { return { type: 'custom:ha-planning-card', title: 'Planning', demo: true, groups: [] }; }
-  constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-    this._events = []; this._view = 'calendar'; this._error = ''; this._message = ''; this._busy = false;
-    this._loadId = 0;
-    this.shadowRoot.addEventListener('click', e => this._click(e));
-    this.shadowRoot.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && e.target.closest('form') && e.target.tagName !== 'BUTTON') { e.preventDefault(); if(e.target.closest('form[data-device-form]')) this._reviewDevice(); else this._review(); }
-    });
-    this.shadowRoot.addEventListener('submit', e => { e.preventDefault(); if (e.target.matches('form[data-device-form]')) this._reviewDevice(); else this._review(); });
-    this.shadowRoot.addEventListener('change', e => { if (e.target.name === 'type' && e.target.closest('form[data-device-form]')) { this._deviceDraft = this._readDeviceForm(); this._render(); } });
+
+
+
+function actionCatalog(config,calendar) {
+  if(!/(^|\/)planning-actions\.yaml$/.test(config?.use_blueprint?.path || '') || config.use_blueprint.input?.planning_calendar!==calendar) throw new Error('Choisissez l’exécution Planning de ce calendrier.');
+  const raw=config.use_blueprint.input.action_catalog || {};
+  if(typeof raw!=='object' || Array.isArray(raw)) throw new Error('La liste des actions autorisées est invalide.');
+  return Object.entries(raw).map(([id,r])=>{const record={...r,id,name:r.name || id,enabled:r.enabled===undefined?true:r.enabled};const issue=validateActionRecord(record);if(issue)throw new Error(issue);return record;});
+}
+function publicActionCatalog(records) {return records.map(r=>({id:r.id,name:r.name,type:r.type,entity_id:targetEntity(r),enabled:r.enabled}));}
+function importedActionCatalog(config,calendar){
+  if(!/(^|\/)planning-(devices|frech)\.yaml$/.test(config?.use_blueprint?.path || '') || config.use_blueprint.input?.planning_calendar!==calendar)return [];
+  return Object.entries(config.use_blueprint.input.machine_catalog || {}).map(([id,r])=>{
+    const type=r.type || 'frech',record={...r,id,type,name:r.name || `Frech ${r.frech_number || id}`,enabled:r.enabled!==false};
+    if(type==='switch')record.entity_id=r.switch_entity;if(type==='script')record.entity_id=r.script_entity;
+    if(type==='frech' && !record.script_entity)record.script_entity=config.use_blueprint.input.startup_script;
+    const issue=validateActionRecord(record);if(issue)throw new Error(issue);return record;
+  });
+}
+function actionRegistry(row) {
+  try {
+    const m=JSON.parse(row.description || 'null');
+    if(m?.planning_actions!==1 || !/^automation\.[a-z0-9_]+$/.test(m.automation || '') || !Array.isArray(m.actions))return null;
+    if(m.actions.some(r=>!r || !/^[a-z0-9_]+$/.test(r.id || '') || typeof r.name!=='string' || typeof r.enabled!=='boolean' || !/^[a-z_]+\.[a-z0-9_]+$/.test(r.entity_id || '')))return null;
+    return {automation:m.automation,test_mode:m.test_mode!==false,actions:publicActionCatalog(m.actions)};
+  }catch{return null;}
+}
+class PlanningActionStore {
+  constructor(getHass,calendar,automation='') {this.getHass=getHass;this.calendar=calendar;this.automation=automation;}
+  async registryRows() {
+    const q=new URLSearchParams({start:DEVICE_REGISTRY_START,end:DEVICE_REGISTRY_END});
+    const rows=await this.getHass().callApi('GET',`calendars/${this.calendar}?${q}`);
+    if(!Array.isArray(rows))throw new Error('La configuration du planning est indisponible.');
+    return rows.filter(row=>actionRegistry(row));
   }
-  setConfig(input) {
-    this._config = validateConfig(input);
-    this._deviceDraft = null; this._deviceError = ''; this._deviceSnapshot = null;
-    this._loadId++; this._loading = false; this._initialized = false; this._editor = null; this._loaded = false; this._error = '';
-    if (this._hass) this._initialize();
+  configPath() {const id=this.getHass().states[this.automation]?.attributes?.id || (this._createdState?.entity_id===this.automation?this._createdState.attributes.id:null);if(!id)throw new Error('Exécution du planning indisponible.');return `config/automation/config/${encodeURIComponent(id)}`;}
+  assertAdminIdle() {
+    if(this.getHass().user?.is_admin!==true)throw new Error('Un administrateur doit autoriser cette nouvelle entité une première fois.');
+    if(Number(this.getHass().states[this.automation]?.attributes?.current || 0)>0)throw new Error('Une action est en cours. Attendez sa fin pour ajouter une nouvelle entité.');
   }
-  set hass(value) {
-    this._hass = value;
-    this.toggleAttribute('dark', value.themes?.darkMode === true);
-    if (this._config && !this._initialized) this._initialize();
-  }
-  connectedCallback() {
-    clearInterval(this._timer);
-    this._timer = setInterval(() => { if (!this._config?.demo && !this._editor && !this._deviceDraft && !this._busy && this._hass) this._load(); }, 30000);
-    if (this._initialized && !this._config.demo) this._load();
-  }
-  disconnectedCallback() { clearInterval(this._timer); this._loadId++; this._loading = false; }
-  getCardSize() { return 16; }
-  getGridOptions() { return { columns: 'full', rows: 14, min_columns: 6, min_rows: 8 }; }
-  _q(selector) { return this.shadowRoot.querySelector(selector); }
-  _initialize() {
-    this._zone = this._hass.config?.time_zone || 'Europe/Brussels';
-    this._deviceCatalog = this._config.execution_automation && !this._config.demo ? [] : this._config.devices.map(d => ({...d}));
-    this._deviceStore = !this._config.demo && this._config.execution_automation ? new PlanningDeviceStore(() => this._hass, this._config.calendar, this._config.execution_automation) : null;
-    this._calendarView = this._config.appearance.default_view;
-    this._runtimeGroups = resolveGroups(this._config, this._hass.states?.[this._config.calendar]?.attributes?.friendly_name);
-    this._selected = dayOf(Date.now(), this._zone); this._month = this._selected.slice(0, 7);
-    this._initialized = true; this._events = []; this._editor = null;
-    if (this._config.demo) {
-      const demo = emptyLocalState(this._zone);
-      this._events = demo.events; this._selected = demo.selected; this._loaded = true; this._render();
-    } else { this._render(); this._load(); }
-  }
-  _groups() { return this._runtimeGroups || []; }
-  _implicitGroup() { return !!this._config.calendar && this._groups().length === 1 && this._groups()[0].id === ''; }
-  _calendar(index) { return this._config.calendar || (this._config.demo ? `calendar.demo_group_${index}` : this._groups()[index].calendar); }
-  _closureCalendar() { return this._config.calendar || (this._config.demo ? 'calendar.demo_closures' : this._config.closure_calendar); }
-  _name(event) { return event.summary || this._groups()[event.groupIndex]?.name || 'Programmation'; }
-  _deviceNames(ids) { return (Array.isArray(ids) ? ids : []).map(id => this._devices().find(d => d.id === id)?.name || `${id} (non configuré)`).join(', '); }
-  _timeLabel(instant) { return new Intl.DateTimeFormat('fr-BE',{timeZone:this._zone,hour:'2-digit',minute:'2-digit',hour12:this._config.appearance.time_format === '12'}).format(new Date(instant)); }
-  _colorStyle(event) { const color = eventColor(event.meta?.color); return `style="--event-color:${color};--event-text:${colorText(color)}"`; }
-  _date(instant, options = {}) { return new Intl.DateTimeFormat('fr-BE', { timeZone: this._zone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12:this._config.appearance.time_format === '12', ...options }).format(new Date(instant)); }
-  _dayLabel(day) { return new Intl.DateTimeFormat('fr-BE', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(`${day}T12:00:00Z`)); }
-  _status(event) { const status = eventStatus(event, this._events, this._zone); return status === 'planned' && event.meta?.devices?.some(id => !this._devices().some(d => d.id === id && d.enabled !== false)) ? 'device-blocked' : status; }
-  _statusText(event) {
-    return ({ 'device-blocked': 'Appareil désactivé ou retiré', closure: 'Exclusion', external: 'Événement non piloté', closed: 'Bloqué par exclusion', replaced: 'Remplacé pour ce cycle' })[this._status(event)] || (event.meta?.kind === 'restart' ? 'Programmation ponctuelle' : 'Horaire habituel');
-  }
-  _editable(event) { return !!event.uid && !!event.meta && (!event.rrule || event.meta.kind === 'weekly'); }
-  _hasGroups() { return this._groups().some(g => g.name.trim()); }
-  _needsSetup() { return !this._config.demo && !this._config.calendar && (!this._config.closure_calendar || !this._groups().length || this._groups().some(g => !g.calendar || !g.name.trim())); }
-  _canWrite() { return this._config.demo || (this._loaded && !this._error && !this._loading); }
-  async _fetch(startDay, endDay) {
-    const sources = this._config.calendar ? [{ calendar: this._config.calendar, role: 'shared', index: null }] : [{ calendar: this._closureCalendar(), role: 'closure', index: null }, ...this._groups().map((g, i) => ({ calendar: this._calendar(i), role: 'group', index: i }))];
-    const query = new URLSearchParams({ start: toInstant(`${startDay}T00:00`, this._zone), end: toInstant(`${endDay}T00:00`, this._zone) });
-    const results = await Promise.all(sources.map(async source => {
-      const entity = this._hass.states[source.calendar];
-      if (!entity || !['on', 'off'].includes(entity.state)) throw new Error(`Calendrier indisponible : ${source.calendar}.`);
-      if ((Number(entity.attributes.supported_features) & 7) !== 7) throw new Error(`Le calendrier ${source.calendar} ne permet pas toutes les modifications. Utilisez Calendrier local.`);
-      const rows = await this._hass.callApi('GET', `calendars/${source.calendar}?${query}`);
-      if (!Array.isArray(rows)) throw new Error('Réponse calendrier invalide.');
-      return rows.filter(e => !this._config.execution_automation || !registryMetadata(e,this._config.execution_automation)).map(e => normalizeEvent(e, source.calendar, source.role, source.index, this._zone, this._groups()));
-    }));
-    return results.flat();
-  }
-  async _load() {
-    if (this._config.demo || this._loading || this._needsSetup()) return;
-    const id = ++this._loadId; this._loading = true;
-    if (!this._editor) this._render();
-    try {
-      const range = viewRange(this._month,this._config.appearance.first_day);
-      const [rows, deviceSnapshot] = await Promise.all([this._fetch(range.queryStart, range.queryEnd), this._deviceStore ? this._deviceStore.load() : null]);
-      if (id !== this._loadId) return;
-      this._events = rows; this._error = ''; this._loaded = true;
-      if(deviceSnapshot) { this._deviceSnapshot = deviceSnapshot; this._deviceCatalog = deviceSnapshot.devices; }
-    } catch (e) { if (id === this._loadId) { this._error = this._errorText(e); this._loaded = false; } }
-    finally { if (id === this._loadId) { this._loading = false; if (!this._editor) this._render(); } }
-  }
-  _errorText(e) { return e?.message || 'Opération refusée ou connexion indisponible. Vérifiez les droits du compte et les calendriers.'; }
-  _button(label, action, secondary = false, extra = '') { return `<button type="button" class="ha-button ${secondary ? '' : 'ha-primary'}" data-action="${action}" ${this._busy ? 'disabled' : ''} ${extra}>${label}</button>`; }
-  _render() {
-    if (!this._initialized) return;
-    const disabled = this._busy || !this._canWrite() ? 'disabled' : '';
-    this.shadowRoot.innerHTML = `<style>${STYLES}ha-icon{--mdc-icon-size:18px}.ha-review-buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}</style><ha-card><div id="planning-root" data-density="${this._config.appearance.density}" data-event-style="${this._config.appearance.event_style}" style="--planning-columns:${this._config.appearance.show_weekends ? 7 : 5};${this._config.appearance.accent_color ? `--ha-accent:${this._config.appearance.accent_color};--ha-accent-text:${colorText(this._config.appearance.accent_color)};` : ''}"><main class="ha-main">
-      <div class="ha-heading"><div><h1>${esc(this._config.title)}</h1><p class="ha-secondary">Programmations ponctuelles, horaires récurrents et exclusions.</p></div><div class="ha-actions">${this._button('Ajouter une exclusion', 'new-closure', true, disabled)}${this._button('Ajouter une programmation', 'new-restart', false, !this._hasGroups() ? 'disabled' : disabled)}</div></div>
-      <div class="ha-demo"><ha-icon icon="mdi:${this._config.demo ? 'flask-outline' : 'calendar-check'}"></ha-icon><span>${this._config.demo ? 'Mode local · aucun enregistrement dans Home Assistant' : 'Calendriers Home Assistant · exécution selon les automatisations configurées'}</span></div>
-      ${this._error ? `<div class="ha-error ha-top-error" role="alert">${esc(this._error)} Les modifications sont bloquées. ${this._button('Réessayer', 'refresh', true)}</div>` : ''}
-      ${!this._hasGroups() || this._needsSetup() ? '<p class="ha-secondary ha-setup" role="status">Choisissez le calendrier du planning dans l’éditeur de carte. Aucun groupe n’est nécessaire pour commencer.</p>' : ''}
-      <div class="ha-tabs" role="tablist" aria-label="Vues du planning"><button type="button" role="tab" id="calendar-tab" aria-controls="calendar-panel" aria-selected="${this._view === 'calendar'}" data-view="calendar">Calendrier</button><button type="button" role="tab" id="weekly-tab" aria-controls="weekly-panel" aria-selected="${this._view === 'weekly'}" data-view="weekly">Horaires habituels</button><button type="button" role="tab" id="devices-tab" aria-controls="devices-panel" aria-selected="${this._view === 'devices'}" data-view="devices">Appareils</button></div>
-      <section id="calendar-panel" role="tabpanel" aria-labelledby="calendar-tab" ${this._view !== 'calendar' ? 'hidden' : ''}><div class="ha-workspace"><section class="ha-calendar" aria-label="Calendrier">${this._calendarDisplayHtml()}</section><aside class="ha-sidebar">${this._editor ? this._editorHtml() : this._detailsHtml()}${this._closuresHtml()}<div class="ha-rule"><ha-icon icon="mdi:shield-check-outline"></ha-icon><span>Une exclusion bloque les activations pendant la période choisie.</span></div></aside></div></section>
-      <section id="weekly-panel" role="tabpanel" aria-labelledby="weekly-tab" ${this._view !== 'weekly' ? 'hidden' : ''}>${this._weeklyHtml()}</section>
-      <section id="devices-panel" role="tabpanel" aria-labelledby="devices-tab" ${this._view !== 'devices' ? 'hidden' : ''}>${this._devicesHtml()}</section>
-      <div class="ha-feedback" role="status" aria-live="polite">${esc(this._message)}</div>
-      <footer class="ha-footer"><span>${this._config.demo ? 'Mode local' : 'Les calendriers sont partagés entre les utilisateurs.'}</span><span>v${VERSION} · ${esc(this._zone)}</span></footer>
-      </main></div></ha-card>`;
-  }
-  _calendarHtml() {
-    const range = viewRange(this._month,this._config.appearance.first_day);
-    const month = new Intl.DateTimeFormat('fr-BE', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(`${this._month}-01T12:00:00Z`));
-    let html = `<div class="ha-monthbar"><div class="ha-month-title"><h2>${esc(month.charAt(0).toUpperCase() + month.slice(1))}</h2><span class="ha-secondary">${this._loading ? 'Actualisation…' : esc(this._zone)}</span></div><div class="ha-monthnav"><button type="button" class="ha-iconbutton" data-action="refresh" aria-label="Actualiser">↻</button><button type="button" class="ha-iconbutton" data-action="prev-month" aria-label="Mois précédent">‹</button><button type="button" class="ha-iconbutton" data-action="next-month" aria-label="Mois suivant">›</button></div></div><div class="ha-days" aria-hidden="true">${visibleWeekdays(this._config.appearance.first_day,this._config.appearance.show_weekends).map(d => `<span>${['Dim.','Lun.','Mar.','Mer.','Jeu.','Ven.','Sam.'][d]}</span>`).join('')}</div><div class="ha-monthgrid" style="--planning-week-rows:${range.count / 7}">`;
-    for (let i = 0; i < range.count; i++) {
-      const day = shiftDay(range.start, i);
-      if(!this._config.appearance.show_weekends && [0,6].includes(weekday(day))) continue;
-      const events = this._events.filter(e => e.role === 'group' && dayOf(e.start, this._zone) === day).sort((a, b) => a.start.localeCompare(b.start));
-      const closed = this._events.some(e => e.role === 'closure' && e.start < toInstant(`${shiftDay(day, 1)}T00:00`, this._zone) && e.end > toInstant(`${day}T00:00`, this._zone));
-      const summary = `${this._dayLabel(day)}${closed ? ', exclusion au moins partielle' : ''}${events.map(e => `, ${this._name(e)} ${localMinute(e.start, this._zone).slice(11)}, ${this._statusText(e)}`).join('')}`;
-      html += `<button type="button" class="ha-day ${day.slice(0, 7) !== this._month ? 'outside' : ''} ${closed ? 'closed' : ''} ${day === this._selected ? 'selected' : ''}" data-day="${day}" aria-label="${esc(summary)}" aria-pressed="${day === this._selected}"><span class="ha-date">${Number(day.slice(8))}</span>${closed ? '<span class="ha-closed-label">Exclusion</span>' : ''}${events.slice(0, 3).map(e => `<span ${this._colorStyle(e)} class="ha-dayevent ${['closed', 'replaced', 'external', 'device-blocked'].includes(this._status(e)) ? 'cancelled' : e.meta?.kind === 'restart' ? 'exceptional' : 'regular'}">${esc(this._timeLabel(e.start))} ${esc(this._name(e))}</span>`).join('')}${events.length > 3 ? `<span class="ha-secondary">+${events.length - 3}</span>` : ''}<span class="ha-mobile-events">${events.slice(0, 6).map(e => `<b ${this._colorStyle(e)} class="ha-dot ${['closed','replaced','external','device-blocked'].includes(this._status(e)) ? 'blocked' : e.meta?.kind === 'restart' ? 'exceptional' : 'regular'}"></b>`).join('')}</span></button>`;
+  async load() {
+    const rows=await this.registryRows(), links=[...new Set(rows.map(r=>actionRegistry(r).automation))];
+    if(links.length>1)throw new Error('Plusieurs exécutions sont associées à ce calendrier. Vérifiez la configuration.');
+    if(links.length)this.automation=links[0];
+    if(!this.automation)return {ready:false,records:[],test_mode:true};
+    if(this.getHass().user?.is_admin===true) {
+      const config=await this.getHass().callApi('GET',this.configPath());
+      try {const records=actionCatalog(config,this.calendar),test_mode=config.use_blueprint.input.test_mode!==false;const expected={automation:this.automation,test_mode,actions:publicActionCatalog(records)};return {ready:true,config,records,fingerprint:stableJson(config),test_mode,needsPublish:rows.length!==1 || stableJson(actionRegistry(rows[0]))!==stableJson(expected)};}
+      catch(error){if(!links.length)return {ready:false,records:importedActionCatalog(config,this.calendar),test_mode:true,legacy_automation:this.automation};throw error;}
     }
-    return html + '</div><div class="ha-legend"><span>Couleur choisie par programmation</span><span><b class="ha-dot closure"></b>Exclusion</span><span><b class="ha-dot blocked"></b>Bloqué / remplacé</span></div>';
+    if(!rows.length)return {ready:false,records:[],test_mode:true};
+    const meta=actionRegistry(rows[0]);
+    if(rows.some(r=>stableJson(actionRegistry(r))!==stableJson(meta)))throw new Error('Un administrateur doit actualiser la liste des actions autorisées.');
+    return {ready:true,records:meta.actions,test_mode:meta.test_mode};
   }
-  _detailsHtml() {
-    const events = this._events.filter(e => e.role === 'group' && dayOf(e.start, this._zone) === this._selected).sort((a, b) => a.start.localeCompare(b.start));
-    return `<section class="ha-panel" aria-live="polite"><div class="ha-panel-title"><div><span class="ha-eyebrow">Programmations prévues</span><h2>${esc(this._dayLabel(this._selected))}</h2></div></div>${!events.length ? '<p class="ha-empty">Aucune programmation ce jour.</p>' : ''}${events.map(e => `<article class="ha-launch" ${this._colorStyle(e)}><div class="ha-launchhead"><span>${esc(this._name(e))}</span><span class="ha-time">${esc(this._timeLabel(e.start))}</span></div><span class="ha-badge ${this._status(e) !== 'planned' ? 'cancelled' : e.meta?.kind === 'restart' ? 'exceptional' : ''}">${this._statusText(e)}</span>${Array.isArray(e.meta?.devices) ? `<p class="ha-device-summary">${esc(this._deviceNames(e.meta.devices))}</p>` : ''}${e.meta?.note ? `<p>${esc(e.meta.note)}</p>` : ''}${this._editable(e) ? `<div class="ha-rowactions"><button type="button" class="ha-textbutton" data-edit="${esc(e.key)}" ${!this._canWrite() ? 'disabled' : ''}>Modifier${e.meta.kind === 'weekly' ? ' la série' : ''}</button><button type="button" class="ha-textbutton danger" data-delete="${esc(e.key)}" ${!this._canWrite() ? 'disabled' : ''}>${e.meta.kind === 'weekly' ? 'Supprimer la série' : 'Supprimer la programmation'}</button></div>` : ''}</article>`).join('')}<button type="button" class="ha-textbutton" data-action="new-restart" ${!this._hasGroups() || !this._canWrite() ? 'disabled' : ''}>+ Ajouter une programmation</button></section>`;
+  async publish(snapshot) {
+    this.assertAdminIdle();
+    const rows=await this.registryRows(), same=rows.filter(r=>actionRegistry(r).automation===this.automation);
+    const description=JSON.stringify({planning_actions:1,automation:this.automation,test_mode:snapshot.test_mode,actions:publicActionCatalog(snapshot.records)});
+    const payload={type:`calendar/event/${same[0]?'update':'create'}`,entity_id:this.calendar,...(same[0]?{uid:same[0].uid}:{}),event:{dtstart:DEVICE_REGISTRY_START,dtend:DEVICE_REGISTRY_END,summary:'Planning — configuration',description}};
+    if(!same[0] || same[0].description!==description) {
+      try{await this.getHass().callWS(payload);}catch(error){const fresh=await this.registryRows();if(!fresh.some(r=>r.description===description))throw error;}
+    }
+    for(const duplicate of same.slice(1))await this.getHass().callWS({type:'calendar/event/delete',entity_id:this.calendar,uid:duplicate.uid});
   }
-  _closuresHtml() {
-    const closures = this._events.filter(e => e.role === 'closure' && e.end > toInstant(`${viewRange(this._month,this._config.appearance.first_day).start}T00:00`, this._zone)).sort((a, b) => a.start.localeCompare(b.start));
-    return `<section class="ha-panel"><div class="ha-panel-title"><h3>Périodes d’exclusion</h3></div>${!closures.length ? '<p class="ha-empty">Aucune exclusion sur la période affichée.</p>' : ''}${closures.map(e => `<article class="ha-closure-item"><h3>${esc(e.summary)}</h3><p>Du ${esc(this._date(e.start))}<br>au ${esc(this._date(e.end))}</p><span class="ha-badge cancelled">Démarrages bloqués</span>${this._editable(e) ? `<div class="ha-rowactions"><button type="button" class="ha-textbutton" data-edit="${esc(e.key)}" ${!this._canWrite() ? 'disabled' : ''}>Modifier</button><button type="button" class="ha-textbutton danger" data-delete="${esc(e.key)}" ${!this._canWrite() ? 'disabled' : ''}>Supprimer</button></div>` : '<p>Géré depuis le calendrier Home Assistant.</p>'}</article>`).join('')}</section>`;
+  async save(snapshot,records) {
+    this.assertAdminIdle();for(const r of records){const issue=validateActionRecord(r);if(issue)throw new Error(issue);}
+    const current=await this.getHass().callApi('GET',this.configPath());actionCatalog(current,this.calendar);
+    if(stableJson(current)!==snapshot.fingerprint)throw new Error('Les actions autorisées ont changé. Actualisez puis vérifiez votre programmation.');
+    const updated=JSON.parse(JSON.stringify(current));updated.use_blueprint.input.action_catalog=Object.fromEntries(records.map(({id,...r})=>[id,r]));
+    this.assertAdminIdle();
+    try{await this.getHass().callApi('POST',this.configPath(),updated);}catch(error){const recovered=await this.getHass().callApi('GET',this.configPath());if(stableJson(recovered)!==stableJson(updated))throw error;}
+    const confirmed=await this.getHass().callApi('GET',this.configPath());if(stableJson(confirmed)!==stableJson(updated))throw new Error('La sauvegarde des actions n’a pas pu être confirmée.');
+    const result={ready:true,config:confirmed,records:actionCatalog(confirmed,this.calendar),fingerprint:stableJson(confirmed),test_mode:confirmed.use_blueprint.input.test_mode!==false};
+    try{await this.publish(result);}catch{result.needsPublish=true;}return result;
   }
-  _weeklyHtml() {
-    if (!this._hasGroups()) return '<h2>Horaires habituels</h2><p class="ha-empty">Choisissez un calendrier dans l’éditeur de carte pour ajouter un horaire.</p>';
-    return `<div class="ha-weekly-head"><h2>Semaine habituelle</h2><p class="ha-secondary">Ajoutez autant d’horaires que nécessaire. Chaque série possède ses appareils et sa couleur.</p></div>${this._groups().map((g, i) => {
-      const series = [...new Map(this._events.filter(e => e.groupIndex === i && e.meta?.kind === 'weekly').map(e => [e.uid || e.meta.id || e.key, e])).values()].sort((a, b) => weekday(dayOf(a.start, this._zone)) - weekday(dayOf(b.start, this._zone)) || localMinute(a.start, this._zone).slice(11).localeCompare(localMinute(b.start, this._zone).slice(11)));
-      return `<section class="ha-weekly-group"><h3>${esc(g.name)}</h3>${!series.length ? '<p class="ha-empty">Aucun horaire sur la période affichée.</p>' : ''}${series.map(e => `<article class="ha-weeklyrow" ${this._colorStyle(e)}><div><h3><span class="ha-color-swatch"></span>${esc(this._name(e))}</h3><p class="ha-secondary">${esc(new Intl.DateTimeFormat('fr-BE', { timeZone: this._zone, weekday: 'long', hour: '2-digit', minute: '2-digit', hour12:this._config.appearance.time_format === '12' }).format(new Date(e.start)))}</p>${e.meta.devices ? `<p>${esc(this._deviceNames(e.meta.devices))}</p>` : ''}</div><div class="ha-actions"><button type="button" class="ha-button" data-edit="${esc(e.key)}" ${!this._canWrite() ? 'disabled' : ''}>Modifier la série</button><button type="button" class="ha-textbutton danger" data-delete="${esc(e.key)}" ${!this._canWrite() ? 'disabled' : ''}>Supprimer</button></div></article>`).join('')}<button type="button" class="ha-button" data-weekly="${i}" ${!this._canWrite() || !g.name.trim() ? 'disabled' : ''}>Ajouter un horaire</button></section>`;
-    }).join('')}`;
-  }
-  _timeFields(value = '') {
-    const [hour = '', minute = ''] = value.split(':');
-    const minutes = ['00','10','20','30','40','50'];
-    if (minute && !minutes.includes(minute)) minutes.push(minute);
-    const select = (label, name, values, current) => `<label class="ha-field">${label}<select name="${name}" required><option value="">—</option>${values.map(v => `<option value="${v}" ${v === current ? 'selected' : ''}>${v}${name === 'minute' && Number(v) % 10 ? ' (valeur existante)' : ''}</option>`).join('')}</select></label>`;
-    return `<div class="ha-time-inputs">${select('Heure', 'hour', Array.from({length:24}, (_, i) => String(i).padStart(2, '0')), hour)}${select('Minutes', 'minute', minutes.sort(), minute)}</div>`;
-  }
-  _seriesOptions(d) {
-    const series = [...new Map(this._events.filter(e => e.meta?.kind === 'weekly' && e.meta.id).map(e => [e.meta.id, e])).values()];
-    if (d.replace_series && !series.some(e => e.meta.id === d.replace_series)) series.push({meta:{id:d.replace_series}, summary:'Série hors de la période affichée'});
-    return `<label class="ha-field ha-wide">Horaire à remplacer cette semaine<select name="replace_series"><option value="">Conserver tous les horaires habituels</option>${series.map(e => `<option value="${esc(e.meta.id)}" ${e.meta.id === d.replace_series ? 'selected' : ''}>${esc(this._name(e))}${e.start ? ` · ${esc(this._date(e.start, {weekday:'short'}))}` : ''}</option>`).join('')}</select></label>`;
-  }
-  _field(label, name, type, value) { return `<label class="ha-field">${label}<input type="${type}" name="${name}" value="${esc(value)}" required ${this._busy ? 'disabled' : ''}></label>`; }
-  _editorHtml() {
-    const d = this._draft, editing = !!d.uid;
-    const title = this._editor === 'delete' ? 'Confirmer la suppression' : `${editing ? 'Modifier' : 'Ajouter'} ${d.kind === 'closure' ? 'une exclusion' : d.kind === 'weekly' ? 'un horaire habituel' : 'une programmation'}`;
-    let html = `<section class="ha-panel ha-editor" aria-label="Formulaire de programmation"><div class="ha-panel-title"><h3>${title}</h3><button type="button" class="ha-iconbutton" data-action="close-editor" aria-label="Fermer" ${this._busy ? 'disabled' : ''}>×</button></div>`;
-    if (this._editor === 'review' || this._editor === 'delete') {
-      html += `<div class="ha-summary"><strong>${esc(d.summary)}</strong>${this._editor === 'delete' ? (d.kind === 'weekly' ? 'Toute la série hebdomadaire sera supprimée.' : 'Cet événement sera supprimé du calendrier.') : d.kind === 'closure' ? `Du ${esc(this._date(d.start))} au ${esc(this._date(d.end))}. Les activations pendant cette période seront bloquées.` : `${esc(this._date(d.start))}${d.kind === 'weekly' ? ' · toutes les semaines' : d.replace_series ? '<br>Remplace uniquement la série choisie pour cette semaine.' : d.replace ? '<br>Remplace tous les horaires de ce groupe pour cette semaine.' : '<br>Ajoute une programmation ponctuelle.'}`}${d.devices ? `<p>Appareils : ${esc(this._deviceNames(d.devices))}</p>` : ''}</div>${this._editor === 'review' && d.uid && d.kind === 'weekly' ? '<p class="ha-secondary ha-note">Cette modification concerne toute la série hebdomadaire.</p>' : ''}<div class="ha-review-buttons">${this._button(this._busy ? 'Enregistrement…' : this._config.demo ? 'Confirmer en mode local' : 'Confirmer dans Home Assistant', this._editor === 'delete' ? 'confirm-delete' : 'save')}${this._button('Retour', 'back', true)}</div>`;
-    } else {
-      html += '<form><div class="ha-settings">';
-      if (d.kind === 'closure') html += `<div class="ha-wide">${this._field('Libellé', 'summary', 'text', d.summary)}${this._field('Début de la période', 'start', 'datetime-local', d.start ? localMinute(d.start, this._zone) : '')}${this._field('Fin de la période', 'end', 'datetime-local', d.end ? localMinute(d.end, this._zone) : '')}</div>`;
-      else {
-        html += `<label class="ha-field ha-wide">Libellé (facultatif)<input name="summary" maxlength="120" value="${esc(d.summary)}"></label>`;
-        if (this._implicitGroup()) html += `<p class="ha-secondary ha-wide">Calendrier : ${esc(this._groups()[0].name)}</p>`;
-        else html += `<label class="ha-field ha-wide">Groupe<select name="group" required ${editing ? 'disabled' : ''}><option value="">Choisir un groupe</option>${this._groups().map((g, i) => `<option value="${i}" ${i === d.groupIndex ? 'selected' : ''} ${!g.name.trim() ? 'disabled' : ''}>${esc(g.name)}</option>`).join('')}</select></label>`;
-        if (d.kind === 'weekly') html += `<label class="ha-field ha-wide">Jour<select name="day" required><option value="">Choisir un jour</option>${['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'].map((name, i) => `<option value="${i}" ${d.start && i === weekday(dayOf(d.start, this._zone)) ? 'selected' : ''}>${name}</option>`).join('')}</select></label>`;
-        else html += `<div class="ha-wide">${this._field('Date', 'date', 'date', d.start ? dayOf(d.start, this._zone) : '')}</div>`;
-        html += this._timeFields(d.start ? localMinute(d.start, this._zone).slice(11) : '');
-        if (!this._devices().length && (this._config.execution_automation || this._config.demo)) html += `<div class="ha-wide ha-device-notice">Aucun appareil configuré. ${this._button('Gérer les appareils','open-devices',true)}</div>`;
-        if (this._devices().length) html += `<fieldset class="ha-device-picker ha-wide"><legend>Appareils à démarrer</legend>${this._devices().map(device => `<label class="ha-check"><input type="checkbox" name="device" value="${esc(device.id)}" ${d.devices?.includes(device.id) ? 'checked' : ''} ${device.enabled === false && !d.devices?.includes(device.id) ? 'disabled' : ''}>${esc(device.name)}${device.enabled === false ? ' (désactivé)' : ''}</label>`).join('')}</fieldset>`;
-        const unknown = (d.devices || []).filter(id => !this._devices().some(device => device.id === id));
-        if (unknown.length) html += `<p class="ha-error ha-wide">Appareils retirés de la configuration : ${esc(unknown.join(', '))}. Vérifiez la sélection avant d’enregistrer.</p>`;
-        html += `<label class="ha-field">Couleur<input type="color" name="color" value="${eventColor(d.color)}"></label>`;
-        if (d.kind === 'restart') html += this._seriesOptions(d) + (d.replace ? '<label class="ha-check ha-wide"><input type="checkbox" name="replace" checked>Ancien remplacement : tous les horaires de ce groupe pour la semaine</label>' : '');
+  async prepare(snapshot,rows) {
+    const fresh=await this.load();if(!fresh.ready)throw new Error('Préparez d’abord l’exécution de ce calendrier dans les réglages de la carte.');
+    const records=[...fresh.records], resolved=[];let added=false;
+    for(const row of rows) {
+      let record=records.find(r=>r.id===row.target);
+      if(!record && row.target?.startsWith('entity:')) {
+        this.assertAdminIdle();const entity=row.target.slice(7), state=this.getHass().states[entity];if(!state)throw new Error('Cette entité n’est plus disponible.');
+        record=records.find(r=>targetEntity(r)===entity);
+        if(!record){record=simpleActionRecord(entity,state.attributes?.friendly_name || entity);if(records.some(r=>r.id===record.id))throw new Error('Identifiant d’action déjà utilisé.');records.push(record);added=true;}
       }
-      html += `<label class="ha-field ha-wide">Note (facultative)<input type="text" name="note" maxlength="500" value="${esc(d.note || '')}"></label></div>${!this._config.demo && d.kind !== 'closure' ? `<p class="ha-secondary">Prévoir au moins ${MIN_LEAD_MINUTES} minutes. Heure du site : ${esc(this._zone)}.</p>` : ''}<div class="ha-review-buttons">${this._button('Vérifier la programmation', 'review')}${this._button('Annuler', 'close-editor', true)}</div></form>`;
+      if(!record || record.enabled===false || !Object.hasOwn(operationsFor(record),row.op))throw new Error('Choisissez une action active et compatible.');
+      const old=snapshot?.records.find(r=>r.id===record.id);
+      if(old && snapshot.config && stableJson(old)!==stableJson(record))throw new Error('Cette action a changé depuis l’ouverture. Actualisez et recommencez.');
+      resolved.push({target:record.id,op:row.op});
     }
-    return html + `${this._formError ? `<div class="ha-error" role="alert">${esc(this._formError)}</div>` : ''}</section>`;
+    const saved=added?await this.save(fresh,records):fresh;return {snapshot:saved,actions:resolved};
   }
-  _open(kind, event, index = null) {
-    if (!this._canWrite() || this._busy) return;
-    if (kind !== 'closure' && !this._hasGroups()) return;
-    this._deviceDraft = null; this._deviceError = '';
-    this._view = 'calendar'; this._message = ''; this._formError = ''; this._original = event || null;
-    if (!event && kind !== 'closure' && this._implicitGroup()) index = 0;
-    this._draft = event ? { ...event, kind: event.meta.kind, note: event.meta.note || '', color: event.meta.color, devices: event.meta.devices, replace_series: event.meta.replace_series, replace: event.meta.replace === true, event_id: event.meta.id || newEventId() } : { kind, groupIndex: index, calendar: kind === 'closure' ? this._closureCalendar() : index === null ? '' : this._calendar(index), start: '', end: '', summary: '', devices: this._config.execution_automation || this._devices().length ? [] : undefined, replace: false, event_id: newEventId() };
-    this._editor = 'form'; this._render();
-    this._q('.ha-editor input:not([disabled]),.ha-editor select:not([disabled])')?.focus({ preventScroll: true });
-  }
-  _review() {
-    if (this._busy || this._editor !== 'form') return;
-    const form = this._q('form'); if (!form?.reportValidity()) return;
-    const data = new FormData(form), d = { ...this._draft };
-    try {
-      if (d.kind === 'closure') { d.summary = data.get('summary').trim(); d.start = toInstant(data.get('start'), this._zone); d.end = toInstant(data.get('end'), this._zone); }
-      else {
-        if (!d.uid) d.groupIndex = this._implicitGroup() ? 0 : Number(data.get('group'));
-        d.calendar = this._calendar(d.groupIndex);
-        d.group = this._config.calendar ? this._groups()[d.groupIndex].id : undefined;
-        const time = `${data.get('hour')}:${data.get('minute')}`;
-        d.start = d.kind === 'weekly' ? nextWeekly(Number(data.get('day')), time, this._zone) : toInstant(`${data.get('date')}T${time}`, this._zone);
-        d.end = new Date(Date.parse(d.start) + 300000).toISOString();
-        d.devices = this._config.execution_automation || this._devices().length || d.devices !== undefined ? data.getAll('device') : undefined;
-        d.summary = data.get('summary').trim() || (d.devices?.length ? this._deviceNames(d.devices) : `${d.kind === 'weekly' ? 'Horaire habituel' : 'Programmation'} · ${this._groups()[d.groupIndex].name}`);
-        d.color = eventColor(data.get('color'));
-        if (d.kind === 'weekly') d.rrule = `FREQ=WEEKLY;BYDAY=${['SU','MO','TU','WE','TH','FR','SA'][Number(data.get('day'))]}`;
-        d.replace = data.get('replace') === 'on';
-        d.replace_series = data.get('replace_series') || undefined;
-        if (d.replace_series) {
-          d.replace = false;
-          const series = this._events.find(e => e.meta?.kind === 'weekly' && e.meta.id === d.replace_series);
-          if (series && !sameGroup(series, d)) throw new Error('Choisissez un horaire habituel du même groupe.');
+  async setup(version,legacyAutomation='') {
+    if(!/^calendar\.[a-z0-9_]+$/.test(this.calendar || ''))throw new Error('Choisissez d’abord un calendrier local dans la configuration de la carte.');
+    if(this.getHass().user?.is_admin!==true)throw new Error('La préparation du planning nécessite un administrateur Home Assistant.');
+    const installed=await this.getHass().callWS({type:'blueprint/list',domain:'automation'});
+    let path=Object.keys(installed).find(p=>/(^|\/)planning-actions\.yaml$/.test(p) && installed[p].metadata?.source_url?.startsWith('https://github.com/Euro-Locks-Belgium/ha-planning-card/'));
+    if(!path) {
+      if(!/^\d+\.\d+\.\d+$/.test(version))throw new Error('Version de développement : importer manuellement le blueprint planning-actions.yaml pour tester dans Home Assistant.');
+      const url=`https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/v${version}/blueprints/planning-actions.yaml`;
+      const imported=await this.getHass().callWS({type:'blueprint/import',url});
+      if(imported.validation_errors && Object.keys(imported.validation_errors).length)throw new Error('Le blueprint téléchargé n’a pas été validé.');
+      if(imported.exists)throw new Error('Un blueprint du même nom existe déjà. Vérifiez-le dans Home Assistant.');
+      if(!/^[a-zA-Z0-9/_-]+$/.test(imported.suggested_filename || '') || !imported.suggested_filename.endsWith('planning-actions'))throw new Error('Nom du blueprint inattendu.');
+      path=`${imported.suggested_filename}.yaml`;
+      await this.getHass().callWS({type:'blueprint/save',domain:'automation',path,yaml:imported.raw_data,source_url:url});
+    }
+    const id=`planning_actions_${this.calendar.slice(9)}`, endpoint=`config/automation/config/${id}`;
+    let config;
+    try{config=await this.getHass().callApi('GET',endpoint);actionCatalog(config,this.calendar);}
+    catch(error){
+      if(![error.status_code,error.status].includes(404))throw error;
+      let catalog={};
+      if(legacyAutomation && this.getHass().states[legacyAutomation]?.attributes?.id) {
+        const old=await this.getHass().callApi('GET',`config/automation/config/${encodeURIComponent(this.getHass().states[legacyAutomation].attributes.id)}`);
+        if(/(^|\/)planning-(devices|frech)\.yaml$/.test(old.use_blueprint?.path || '') && old.use_blueprint.input?.planning_calendar===this.calendar) {
+          catalog=Object.fromEntries(importedActionCatalog(old,this.calendar).map(({id,...r})=>[id,r]));
         }
       }
-      d.note = data.get('note') || ''; this._draft = d;
-      const issue = validateDraft(d, this._events, this._zone, Date.now(), this._config.demo, this._devices());
-      if (issue) throw new Error(issue);
-      this._editor = 'review'; this._formError = ''; this._render();
-    } catch (e) { this._formError = this._errorText(e); this._render(); }
+      config={id,alias:`Planning — ${this.getHass().states[this.calendar]?.attributes?.friendly_name || this.calendar}`,use_blueprint:{path,input:{planning_calendar:this.calendar,action_catalog:catalog,test_mode:true}}};
+      try{await this.getHass().callApi('POST',endpoint,config);}catch(error){const read=await this.getHass().callApi('GET',endpoint);if(stableJson(read)!==stableJson(config))throw error;}
+    }
+    for(let attempt=0;attempt<8;attempt++) {
+      const states=await this.getHass().callWS({type:'get_states'}), state=states.find(s=>s.entity_id.startsWith('automation.') && s.attributes?.id===id);
+      if(state){this.automation=state.entity_id;this._createdState=state;const snapshot={ready:true,config,records:actionCatalog(config,this.calendar),fingerprint:stableJson(config),test_mode:config.use_blueprint.input.test_mode!==false};await this.publish(snapshot);return snapshot;}
+      await new Promise(resolve=>setTimeout(resolve,250));
+    }
+    throw new Error('L’automatisation est enregistrée. Actualisez la carte lorsque Home Assistant a terminé son chargement.');
   }
-  _fingerprint(event) {
-    return JSON.stringify([event.summary, event.description || '', event.rrule || '', event.meta?.kind === 'weekly' ? `${weekday(dayOf(event.start, this._zone))}|${localMinute(event.start, this._zone).slice(11)}` : event.start, event.meta?.kind === 'weekly' ? '' : event.end]);
+}
+
+const BASE_PLANNING_STYLE = `
+:host{display:block;font-family:var(--paper-font-body1_-_font-family,Arial,sans-serif);color:var(--primary-text-color,#e7eaef)}*{box-sizing:border-box}ha-card{display:block;background:var(--ha-card-background,var(--card-background-color,#202226));border-radius:var(--ha-card-border-radius,16px);overflow:hidden}main{padding:20px;--accent:var(--primary-color,#31b8de)}h1{font-size:24px;margin:0}h2{font-size:18px;margin:0}h3{font-size:16px;margin:14px 0}p{line-height:1.5}.muted,small{color:var(--secondary-text-color,#aeb7c1)}small{font-size:12px}.toolbar,.row,.tabs,.buttons{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.toolbar{justify-content:space-between;margin-bottom:15px}.tabs{margin:15px 0}.tabs button[aria-pressed=true]{background:var(--accent);color:#071c25}.status{padding:10px 12px;background:var(--secondary-background-color,#292e34);border-radius:9px;font-size:13px;margin:12px 0}.error{border:1px solid #f38181;color:#ffb6b6}.notice{border-left:3px solid var(--accent)}button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer;border:1px solid var(--divider-color,#424850);background:transparent;border-radius:8px;padding:9px 12px}button:hover{background:var(--secondary-background-color,#30363d)}button.primary{background:var(--accent);color:#07222c;border-color:transparent;font-weight:600}button.danger{color:#ff8585}button:disabled{opacity:.45;cursor:default}input,select,textarea{width:100%;background:var(--secondary-background-color,#292e34);border:1px solid var(--divider-color,#444a52);border-radius:7px;padding:10px;min-width:0}option{background:var(--card-background-color,#202226);color:var(--primary-text-color,#e7eaef)}label{display:flex;flex-direction:column;gap:6px;font-size:14px;min-width:0}.field{margin:15px 0}.check{flex-direction:row;align-items:center}.check input{width:auto}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:15px}.time{display:flex;align-items:center;gap:5px}.time select{width:auto;min-width:68px}.weekdays{display:flex;flex-wrap:wrap;gap:6px}.weekdays label{padding:8px;border:1px solid var(--divider-color,#444);border-radius:7px}.weekdays input{width:auto}form,.panel{margin-top:18px;padding:18px;border:1px solid var(--divider-color,#41474e);border-radius:12px}.action-row{display:grid;grid-template-columns:minmax(130px,1fr) minmax(100px,.65fr) auto;gap:8px;margin:9px 0}.action-row button{padding:6px 10px}.calendar{display:grid;grid-template-columns:repeat(var(--columns,7),minmax(0,1fr));border-top:1px solid var(--divider-color,#3c4148);border-left:1px solid var(--divider-color,#3c4148)}.weekday{text-align:center;padding:9px 0;font-size:12px;font-weight:600}.day{min-height:108px;padding:5px;border-right:1px solid var(--divider-color,#3c4148);border-bottom:1px solid var(--divider-color,#3c4148);min-width:0}.day.outside{opacity:.6}.day.selected{background:color-mix(in srgb,var(--accent) 8%,transparent)}.date{padding:3px 6px;border:0;font-size:12px}.event{display:block;text-align:left;width:100%;padding:6px;margin:4px 0;border:0;border-left:3px solid var(--event);background:var(--event);color:var(--event-text);border-radius:5px;font-size:12px;overflow:hidden;overflow-wrap:anywhere;touch-action:pan-y}.event span,.event strong{display:block}.event[draggable=true]{cursor:grab}.event:active{cursor:grabbing}.event small{color:inherit;opacity:.85}.event.external{background:var(--secondary-background-color,#30343a);color:inherit;border:1px dashed #7f8995}.drop-over{outline:2px solid var(--accent);outline-offset:-2px;background:color-mix(in srgb,var(--accent) 15%,transparent)}.agenda{display:grid;gap:10px}.agenda-item{display:grid;grid-template-columns:130px 1fr;gap:10px;align-items:start}.week-scroll{overflow:auto;max-height:680px;border:1px solid var(--divider-color,#41474e);border-radius:8px}.week{display:grid;grid-template-columns:48px repeat(var(--columns,7),minmax(94px,1fr));min-width:700px}.week-head{position:sticky;top:0;z-index:3;padding:10px 4px;text-align:center;background:var(--card-background-color,#202226);font-size:12px;border-bottom:1px solid #444}.hours,.week-day{height:1152px;position:relative}.hours span{position:absolute;left:5px;font-size:10px;color:var(--secondary-text-color,#aaa)}.week-day{border-left:1px solid var(--divider-color,#41474e);background:repeating-linear-gradient(to bottom,transparent 0,transparent 47px,var(--divider-color,#41474e) 47px,var(--divider-color,#41474e) 48px)}.week-day .event{position:absolute;margin:0;min-height:32px;z-index:1}.week-day .event:hover{z-index:2}.day-list{margin-top:15px}.hint{font-size:12px;color:var(--secondary-text-color,#adb5bf)}[data-density=compact] .day{min-height:80px}[data-density=compact] .event{padding:4px}[data-event-style=outline] .event:not(.external){background:transparent;border:1px solid var(--event);border-left:4px solid var(--event);color:var(--primary-text-color,#eee)}[data-event-style=dot] .event:not(.external){background:transparent;color:var(--primary-text-color,#eee);border-left:5px solid var(--event)}details{margin-top:15px}summary{cursor:pointer}input[type=color]{width:70px;height:42px;padding:4px}.empty{text-align:center;padding:25px;color:var(--secondary-text-color,#aaa)}@media(max-width:600px){main{padding:12px}.toolbar{gap:8px}h1{font-size:21px}.calendar .day{min-height:80px;padding:2px}.event{font-size:10px;padding:4px}.grid2{grid-template-columns:1fr}.action-row{grid-template-columns:minmax(100px,1fr) minmax(90px,.7fr) auto;gap:5px}.action-row select{padding:8px 4px;font-size:12px}.agenda-item{grid-template-columns:85px 1fr}form,.panel{padding:12px}.date{padding:3px}.toolbar button{padding:7px 9px}}
+`;
+const PLANNING_STYLE=BASE_PLANNING_STYLE+`:host{height:100%}ha-card{height:100%;overflow:auto}main{min-height:100%;display:flex;flex-direction:column}.calendar{flex:1;grid-template-rows:28px repeat(var(--weeks,5),minmax(80px,1fr))}.event:hover{background:var(--event);filter:brightness(1.1)}.calendar .event strong{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.calendar .event span,.calendar .event small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}@media(max-width:600px){.calendar .event small{display:none}.calendar .event strong{-webkit-line-clamp:1}}`;
+
+class PlanningChauffeEditor extends HTMLElement {
+  constructor(){super();this.attachShadow({mode:'open'});this.shadowRoot.addEventListener('change',e=>this._change(e));}
+  set hass(value){this._hass=value;this._render();}
+  setConfig(value){this._config={...value,title:value.title || 'Planning',demo:value.demo ?? !value.calendar,appearance:normalizeAppearance(value.appearance)};delete this._config.groups;delete this._config.closure_calendar;delete this._config.devices;this._render();}
+  _change(event){
+    const el=event.target;if(!el.dataset.field)return;
+    const field=el.dataset.field,value=el.type==='checkbox'?el.checked:el.value;
+    if(el.dataset.appearance)this._config.appearance[field]=field==='first_day'?Number(value):value;
+    else this._config[field]=value;
+    if(field==='calendar' && value)this._config.demo=false;
+    this.dispatchEvent(new CustomEvent('config-changed',{bubbles:true,composed:true,detail:{config:{...this._config,appearance:{...this._config.appearance}}}}));
+    if(['calendar','demo'].includes(field))this._render();
   }
-  async _freshForDraft() {
-    const d = this._draft;
-    let from = shiftDay(cycleDay(dayOf(d.start, this._zone)), -1), to = shiftDay(from, 16);
-    if (this._original) { from = [from, shiftDay(dayOf(this._original.start, this._zone), -1)].sort()[0]; to = [to, shiftDay(dayOf(this._original.end, this._zone), 1)].sort().at(-1); }
-    if (d.kind === 'weekly') { from = [from, dayOf(Date.now(), this._zone)].sort()[0]; to = [to, shiftDay(dayOf(Date.now(), this._zone), 90)].sort().at(-1); }
-    return this._fetch(from, to);
+  _render(){
+    if(!this._config || !this._hass)return;
+    const c=this._config,a=c.appearance;
+    const select=(label,field,options)=>`<label>${label}<select data-field="${field}" data-appearance="true">${Object.entries(options).map(([value,name])=>`<option value="${value}" ${String(a[field])===value?'selected':''}>${name}</option>`).join('')}</select></label>`;
+    const calendars=Object.values(this._hass.states || {}).filter(e=>e.entity_id.startsWith('calendar.'));
+    this.shadowRoot.innerHTML=`<style>:host{display:block;color:var(--primary-text-color);font-family:inherit}label{display:flex;flex-direction:column;gap:6px;margin:14px 0}input,select{font:inherit;color:var(--primary-text-color);background:var(--secondary-background-color);border:1px solid var(--divider-color);border-radius:8px;padding:11px;box-sizing:border-box;width:100%}.check{flex-direction:row;align-items:center}.check input{width:auto}p{color:var(--secondary-text-color);font-size:13px;line-height:1.5}details{padding:14px 0;border-top:1px solid var(--divider-color)}summary{font-weight:600}h3{margin:12px 0 4px}</style>
+      <h3>Votre planning</h3>
+      <label>Nom de la carte<input data-field="title" value="${esc(c.title)}"></label>
+      <label>Calendrier<select data-field="calendar"><option value="">Choisir un calendrier local</option>${calendars.map(e=>`<option value="${esc(e.entity_id)}" ${e.entity_id===c.calendar?'selected':''}>${esc(e.attributes.friendly_name || e.entity_id)}</option>`).join('')}</select></label>
+      <p>Un seul calendrier. Ajoutez ensuite vos créneaux et choisissez directement les actions à exécuter.</p>
+      <label class="check"><input type="checkbox" data-field="demo" ${c.demo?'checked':''}>Essai local, sans enregistrement dans Home Assistant</label>
+      <p>${c.demo?'Les actions sont simulées.':'L’exécution se prépare depuis le bouton Réglages de la carte. Le mode test est proposé en premier.'}</p>
+      <details><summary>Personnalisation</summary>
+      ${select('Vue initiale','default_view',{month:'Mois',week:'Semaine',agenda:'Agenda'})}
+      ${select('Premier jour','first_day',{'1':'Lundi','0':'Dimanche'})}
+      ${select('Format des heures','time_format',{'24':'24 heures','12':'12 heures'})}
+      ${select('Densité','density',{comfortable:'Confortable',compact:'Compacte'})}
+      ${select('Style des événements','event_style',{filled:'Fond coloré',outline:'Contour',dot:'Repère de couleur'})}
+      <label class="check"><input type="checkbox" data-field="show_weekends" data-appearance="true" ${a.show_weekends?'checked':''}>Afficher les week-ends</label>
+      <label class="check"><input type="checkbox" data-field="show_device_names" data-appearance="true" ${a.show_device_names?'checked':''}>Afficher les noms des appareils dans le calendrier</label>
+      <label>Couleur principale<input type="color" data-field="accent_color" data-appearance="true" value="${eventColor(a.accent_color || '#31b8de')}"></label>
+      </details><p>Taille : utilisez l’onglet Disposition dans une vue Sections, ou une vue Panneau pour la pleine largeur.</p>`;
   }
-  async _save(remove = false) {
-    if (this._busy) return;
-    this._busy = true; this._formError = ''; this._render();
-    try {
-      const d = this._draft;
-      if (!this._config.demo) {
-        const fresh = await this._freshForDraft();
-        if (this._deviceStore) { this._deviceSnapshot = await this._deviceStore.load(); this._deviceCatalog = this._deviceSnapshot.devices; }
-        const original = this._original && fresh.find(e => e.calendar === this._original.calendar && e.uid === this._original.uid);
-        if (this._original && (!original || this._fingerprint(original) !== this._fingerprint(this._original))) throw new Error('Cet événement a changé depuis son ouverture. Fermez le formulaire, actualisez puis recommencez.');
-        if (!remove) {
-          const alreadyCreated = !d.uid && d.event_id && fresh.some(e => e.meta?.id === d.event_id && e.calendar === d.calendar);
-          if (!alreadyCreated) {
-            const issue = validateDraft(d, fresh, this._zone, Date.now(), false, this._devices());
-            if (issue) throw new Error(issue);
-            await this._hass.callWS(calendarPayload(d));
-          }
-        } else await this._hass.callWS(deletionPayload(d));
-      } else this._saveDemo(remove);
-      this._editor = null; this._selected = dayOf(d.start, this._zone); this._month = this._selected.slice(0, 7);
-      this._message = `${remove ? 'Événement supprimé.' : 'Programmation enregistrée.'}${this._config.demo ? ' Mode local uniquement.' : ' Aucun relais n’est commandé par la carte.'}`;
-      if (!this._config.demo) await this._load();
-    } catch (e) { this._formError = this._errorText(e); }
-    finally { this._busy = false; this._render(); }
+}
+if(!customElements.get('ha-planning-card-editor'))customElements.define('ha-planning-card-editor',PlanningChauffeEditor);
+if(!customElements.get('ha-planning-chauffe-card-editor'))customElements.define('ha-planning-chauffe-card-editor',class extends PlanningChauffeEditor{});
+
+
+
+
+
+
+
+class PlanningCard extends HTMLElement {
+  constructor(){
+    super();this.attachShadow({mode:'open'});this._events=[];this._demoRows=[];this._snapshot={records:[],ready:false,test_mode:true};this._generation=0;
+    this.shadowRoot.addEventListener('click',e=>this._click(e));
+    this.shadowRoot.addEventListener('change',e=>this._change(e));
+    this.shadowRoot.addEventListener('input',e=>{if(e.target.name && this._draft)this._draft[e.target.name]=e.target.value;});
+    this.shadowRoot.addEventListener('submit',e=>{e.preventDefault();this._save();});
+    this.shadowRoot.addEventListener('dragstart',e=>{const el=e.target.closest('[data-event]'),item=this._events.find(x=>x.key===el?.dataset.event);if(!item || !this._meta(item) || this._busy){e.preventDefault();return;}this._dragKey=item.key;e.dataTransfer.setData('text/plain',item.key);e.dataTransfer.effectAllowed='move';});
+    this.shadowRoot.addEventListener('dragover',e=>{const target=e.target.closest('[data-drop]');if(target && this._dragKey){e.preventDefault();e.dataTransfer.dropEffect='move';target.classList.add('drop-over');}});
+    this.shadowRoot.addEventListener('dragleave',e=>e.target.closest('[data-drop]')?.classList.remove('drop-over'));
+    this.shadowRoot.addEventListener('dragend',()=>{this._dragKey=null;this.shadowRoot.querySelectorAll('.drop-over').forEach(x=>x.classList.remove('drop-over'));});
+    this.shadowRoot.addEventListener('drop',e=>{const target=e.target.closest('[data-drop]');if(!target)return;e.preventDefault();const key=this._dragKey;this._dragKey=null;const item=this._events.find(x=>x.key===key);if(!item)return;let minute;if(target.classList.contains('week-day'))minute=Math.max(0,Math.min(1430,Math.round((e.clientY-target.getBoundingClientRect().top)/48*60/10)*10));this._move(item,target.dataset.drop,minute);});
   }
-  _saveDemo(remove) {
-    const d = this._draft;
-    if (d.uid) this._events = this._events.filter(e => !(e.uid === d.uid && e.calendar === d.calendar));
-    if (remove) return;
-    const payload = calendarPayload(d), uid = d.uid || newEventId();
-    const add = start => this._events.push(normalizeEvent({ ...payload.event, uid, start, end: new Date(Date.parse(start) + (Date.parse(d.end) - Date.parse(d.start))).toISOString() }, d.calendar, d.kind === 'closure' ? 'closure' : 'group', d.groupIndex, this._zone));
-    if (d.kind === 'weekly') {
-      const day = weekday(dayOf(d.start, this._zone)), time = localMinute(d.start, this._zone).slice(11), range = viewRange(this._month,this._config.appearance.first_day);
-      for (let date = [range.queryStart, dayOf(d.start, this._zone)].sort().at(-1); date < shiftDay(range.queryEnd, 30); date = shiftDay(date, 1)) if (weekday(date) === day) add(toInstant(`${date}T${time}`, this._zone));
-    } else add(d.start);
+  static getConfigElement(){return document.createElement('ha-planning-card-editor');}
+  static getStubConfig(){return {type:'custom:ha-planning-card',title:'Planning',demo:true};}
+  getCardSize(){return 10;}
+  getGridOptions(){return {columns:24,min_columns:6,rows:12,min_rows:8};}
+  setConfig(config){this._config=normalizePlanningConfig(config);this._generation++;this._initialized=false;this._init();}
+  set hass(value){this._hass=value;this._init();}
+  connectedCallback(){if(!this._timer)this._timer=setInterval(()=>{if(this.isConnected && !this._draft && !this._settings && !this._busy)this._load();},60000);this._init();}
+  disconnectedCallback(){clearInterval(this._timer);this._timer=null;}
+  _init(){
+    if(!this._config || !this._hass || this._initialized)return;
+    this._initialized=true;this._zone=this._hass.config?.time_zone || 'Europe/Brussels';this._selected=dayOf(Date.now(),this._zone);this._month=this._selected.slice(0,7);this._view=this._config.appearance.default_view;this._draft=null;this._settings=false;this._events=[];this._error='';this._loaded=!!this._config.demo;this._loading=false;this._snapshot={records:[],ready:false,test_mode:true};
+    this._store=new PlanningActionStore(()=>this._hass,this._config.calendar,this._config.execution_automation);
+    this._render();this._load();
   }
-  async _click(event) {
-    const button = event.target.closest('button'); if (!button || button.disabled || this._busy) return;
-    if (this._deviceClick(button)) return;
-    if (button.dataset.calendarView) { this._calendarView = button.dataset.calendarView; this._render(); return; }
-    if (button.dataset.view) { this._deviceDraft = null; this._view = button.dataset.view; this._render(); return; }
-    if (button.dataset.day) { this._selected = button.dataset.day; this._editor = null; this._render(); return; }
-    if (button.dataset.weekly !== undefined) { this._open('weekly', null, Number(button.dataset.weekly)); return; }
-    if (button.dataset.edit) { const item = this._events.find(e => e.key === button.dataset.edit); if (item) this._open(item.meta.kind, item); return; }
-    if (button.dataset.delete) { const item = this._events.find(e => e.key === button.dataset.delete); if (item) { this._open(item.meta.kind, item); this._editor = 'delete'; this._render(); } return; }
-    switch (button.dataset.action) {
-      case 'new-closure': this._open('closure'); break;
-      case 'new-restart': this._open('restart'); break;
-      case 'close-editor': this._editor = null; this._render(); break;
-      case 'back': if (this._editor === 'delete') this._editor = null; else this._editor = 'form'; this._formError = ''; this._render(); break;
-      case 'review': this._review(); break;
-      case 'save': await this._save(); break;
-      case 'confirm-delete': await this._save(true); break;
-      case 'refresh': if (!this._config.demo) await this._load(); else { this._message = 'Mode local, sans appel à Home Assistant.'; this._render(); } break;
-      case 'today': if(this._loading) return; this._selected = dayOf(Date.now(),this._zone); this._month = this._selected.slice(0,7); this._editor = null; this._render(); if(!this._config.demo) await this._load(); break;
-      case 'prev-month': case 'next-month': {
-        if(this._loading) return;
-        if(this._calendarView === 'week') { this._selected = shiftDay(this._selected, button.dataset.action === 'next-month' ? 7 : -7); this._month = this._selected.slice(0,7); this._editor = null; this._render(); if(!this._config.demo) await this._load(); break; }
-        if (this._loading) return;
-        const date = new Date(`${this._month}-01T12:00:00Z`); date.setUTCMonth(date.getUTCMonth() + (button.dataset.action === 'next-month' ? 1 : -1));
-        this._month = date.toISOString().slice(0, 7); this._editor = null; this._render(); if (!this._config.demo) await this._load(); break;
+  _range(){return viewRange(this._month,this._config.appearance.first_day);}
+  _meta(event){
+    if(event.meta)return event.meta;
+    const old=event.legacy;
+    if(!old || !['weekly','restart'].includes(old.kind) || !old.devices?.length)return null;
+    const records=old.devices.map(id=>this._record(id));if(records.some(r=>!r))return null;
+    return {planning:2,kind:'schedule',id:old.id || newEventId(),color:old.color,has_end:false,start_actions:records.map(r=>({target:r.id,op:defaultOperation(r)})),end_actions:[],note:old.note || ''};
+  }
+  _time(value){return new Intl.DateTimeFormat('fr-BE',{timeZone:this._zone,hour:'2-digit',minute:'2-digit',hour12:this._config.appearance.time_format==='12'}).format(new Date(value));}
+  _label(day){return new Intl.DateTimeFormat('fr-BE',{timeZone:'UTC',weekday:'short',day:'numeric',month:'short'}).format(new Date(`${day}T12:00Z`));}
+  _record(id){if(id?.startsWith('entity:')){const entity=id.slice(7);return simpleActionRecord(entity,this._hass.states[entity]?.attributes?.friendly_name);}return this._snapshot.records.find(r=>r.id===id);}
+  _choices(){
+    const records=this._snapshot.records.filter(r=>r.enabled!==false).map(r=>({...r,value:r.id}));
+    if(this._config.demo || this._hass.user?.is_admin)for(const [entity,state] of Object.entries(this._hass.states || {})){
+      if(!ACTION_TYPES[entity.split('.')[0]] || records.some(r=>targetEntity(r)===entity))continue;
+      try{records.push({...simpleActionRecord(entity,state.attributes?.friendly_name),value:`entity:${entity}`});}catch{/* Unsupported entities remain outside the action picker. */}
+    }
+    return records.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+  }
+  async _fetch(start,end){
+    const state=this._hass.states[this._config.calendar];
+    if(!state || !['on','off'].includes(state.state))throw new Error('Choisissez un calendrier local disponible dans la configuration de la carte.');
+    if((Number(state.attributes.supported_features)&7)!==7)throw new Error('Ce calendrier ne permet pas toutes les modifications. Utilisez Calendrier local.');
+    const query=new URLSearchParams({start:toInstant(`${start}T00:00`,this._zone),end:toInstant(`${end}T00:00`,this._zone)});
+    const rows=await this._hass.callApi('GET',`calendars/${this._config.calendar}?${query}`);
+    if(!Array.isArray(rows))throw new Error('Réponse calendrier invalide.');
+    return rows.filter(r=>!actionRegistry(r) && !r.description?.includes('"planning_devices"')).map(r=>normalizeSchedule(r,this._config.calendar,this._zone));
+  }
+  async _load(){
+    if(!this._initialized || this._loading)return;
+    if(this._config.demo){this._expandDemo();this._loaded=true;this._render();return;}
+    if(!this._config.calendar)return;
+    const generation=this._generation;this._loading=true;
+    try{const range=this._range();const [events,snapshot]=await Promise.all([this._fetch(range.queryStart,range.queryEnd),this._store.load()]);if(generation!==this._generation)return;if(snapshot.ready && snapshot.config && snapshot.needsPublish){try{await this._store.publish(snapshot);snapshot.needsPublish=false;}catch(e){snapshot.publishError=e.message;}}this._events=events;this._snapshot=snapshot;this._loaded=true;this._error=snapshot.publishError || '';}
+    catch(e){if(generation===this._generation){this._error=e.message;this._loaded=false;}}
+    finally{if(generation===this._generation){this._loading=false;this._render();}}
+  }
+  _expandDemo(){
+    const range=this._range(),expanded=[];
+    for(const row of this._demoRows){
+      if(!row.rrule){expanded.push(normalizeSchedule(row,this._config.calendar || 'calendar.demo',this._zone));continue;}
+      const days=(row.rrule.match(/BYDAY=([^;]+)/)?.[1] || '').split(',').map(x=>['SU','MO','TU','WE','TH','FR','SA'].indexOf(x));
+      for(let day=range.queryStart;day<range.queryEnd;day=shiftDay(day,1))if(day>=dayOf(row.start,this._zone) && days.includes(weekday(day))){
+        const shifted=shiftedOccurrence(row,day,undefined,this._zone),rid=localMinute(shifted.start,this._zone).replace(/[-:]/g,'')+'00';
+        if(row.deleted?.includes(rid))continue;
+        expanded.push(normalizeSchedule({...row,...shifted,...row.exceptions?.[rid],recurrence_id:rid},this._config.calendar || 'calendar.demo',this._zone));
       }
+    }
+    this._events=expanded;
+  }
+  _button(label,action,extra=''){return `<button type="button" data-action="${action}" ${this._busy?'disabled':''} ${extra}>${label}</button>`;}
+  _executionLabel(){if(this._config.demo)return 'Essai local · aucune commande envoyée';if(!this._snapshot.ready)return 'Choisissez vos horaires, puis préparez l’exécution dans Réglages.';if(!this._snapshot.config)return 'Programmations partagées · exécution gérée par Home Assistant';if(this._hass.states[this._store.automation]?.state==='off')return 'Automatisation désactivée dans Home Assistant';return this._snapshot.test_mode?'Mode test · notifications uniquement':'Exécution Home Assistant active';}
+  _eventHtml(e,style=''){
+    const meta=this._meta(e),names=meta?.start_actions.map(a=>this._record(a.target)?.name || a.target).join(', ') || '';
+    return `<button type="button" class="event ${meta?'':'external'}" data-event="${esc(e.key)}" draggable="${!!meta && !this._busy}" style="--event:${eventColor(meta?.color)};--event-text:${colorText(meta?.color)};${style}" title="${esc(`${e.summary} · ${this._time(e.start)}${meta?.has_end?' → '+this._time(e.end):''}`)}"><span>${this._time(e.start)}${meta?.has_end?' → '+this._time(e.end):''}${recurring(e)?' ↻':''}</span><strong>${esc(e.summary)}</strong>${this._config.appearance.show_device_names && names?`<small>${esc(names)}</small>`:''}</button>`;
+  }
+  _dayEvents(day){return this._events.filter(e=>dayOf(e.start,this._zone)===day && e.role!=='legacy-closure').sort((a,b)=>a.start.localeCompare(b.start));}
+  _calendarHtml(){
+    const a=this._config.appearance,days=visibleWeekdays(a.first_day,a.show_weekends),range=this._range();
+    if(this._view==='agenda')return `<div class="agenda">${this._events.filter(e=>e.role!=='legacy-closure' && dayOf(e.start,this._zone).startsWith(this._month)).sort((a,b)=>a.start.localeCompare(b.start)).map(e=>`<div class="agenda-item"><small>${this._label(dayOf(e.start,this._zone))}</small>${this._eventHtml(e)}</div>`).join('') || '<div class="empty">Aucune programmation ce mois-ci.</div>'}</div>`;
+    if(this._view==='week'){
+      const first=shiftDay(this._selected,-((weekday(this._selected)-a.first_day+7)%7)),week=Array.from({length:7},(_,i)=>shiftDay(first,i)).filter(d=>days.includes(weekday(d)));
+      return `<div class="week-scroll"><div class="week" style="--columns:${days.length}"><div class="week-head"></div>${week.map(d=>`<div class="week-head">${this._label(d)}</div>`).join('')}<div class="hours">${Array.from({length:24},(_,i)=>`<span style="top:${i*48}px">${String(i).padStart(2,'0')}:00</span>`).join('')}</div>${week.map(d=>`<div class="week-day" data-drop="${d}" aria-label="${this._label(d)}">${packWeekEvents(this._dayEvents(d),this._zone).map(p=>this._eventHtml(p.event,`top:${p.minute/60*48}px;height:${(p.visualEnd-p.minute)/60*48}px;left:${p.lane/p.lanes*100}%;width:${100/p.lanes}%`)).join('')}</div>`).join('')}</div></div>`;
+    }
+    let html=days.map(d=>`<div class="weekday">${['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][d]}</div>`).join('');
+    for(let i=0;i<range.count;i++){const day=shiftDay(range.start,i);if(!days.includes(weekday(day)))continue;html+=`<div class="day ${day.startsWith(this._month)?'':'outside'} ${day===this._selected?'selected':''}" data-drop="${day}"><button class="date" type="button" data-day="${day}" aria-label="Ajouter le ${esc(this._label(day))}">${Number(day.slice(8))}</button>${this._dayEvents(day).map(e=>this._eventHtml(e)).join('')}</div>`;}
+    return `<div class="calendar" style="--columns:${days.length};--weeks:${range.count/7}">${html}</div>`;
+  }
+  _timeSelect(prefix,value){const [h,m]=value.split(':');return `<div class="time"><select name="${prefix}_hour" aria-label="Heure ${prefix==='start'?'de début':'de fin'}">${Array.from({length:24},(_,i)=>String(i).padStart(2,'0')).map(x=>`<option ${x===h?'selected':''}>${x}</option>`).join('')}</select><span>:</span><select name="${prefix}_minute" aria-label="Minute ${prefix==='start'?'de début':'de fin'}">${[...new Set(['00','10','20','30','40','50',m])].sort().map(x=>`<option ${x===m?'selected':''}>${x}</option>`).join('')}</select></div>`;}
+  _actionsHtml(phase){
+    const choices=this._choices(),list=this._draft[phase];
+    return list.map((row,index)=>{const record=this._record(row.target),ops=operationsFor(record);return `<div class="action-row" data-phase="${phase}" data-index="${index}"><select data-target aria-label="Appareil ${phase==='start_actions'?'au début':'à la fin'} ${index+1}"><option value="">Choisir un appareil ou un script</option>${choices.map(r=>`<option value="${esc(r.value)}" ${r.value===row.target?'selected':''}>${esc(r.name)}</option>`).join('')}${row.target && !choices.some(r=>r.value===row.target)?`<option selected value="${esc(row.target)}">${esc(row.target)} (indisponible)</option>`:''}</select><select data-operation aria-label="Action ${index+1}">${Object.entries(ops).map(([value,label])=>`<option value="${value}" ${row.op===value?'selected':''}>${label}</option>`).join('')}</select><button type="button" data-remove-action aria-label="Retirer l’action ${index+1}">×</button></div>`;}).join('');
+  }
+  _formHtml(){
+    const d=this._draft,existing=!!d.uid,isRecurring=!!d.rrule || !!d.recurrence_id;
+    if(d.readonly)return `<section class="panel"><h2>${esc(d.summary)}</h2><p>Cette programmation utilise l’ancien format ou provient d’une autre application. Elle est conservée et reste gérée par son automatisation actuelle.</p>${this._button('Fermer','cancel')}</section>`;
+    return `<form><div class="toolbar"><h2>${existing?'Modifier cette programmation':'Nouvelle programmation'}</h2>${this._button('Fermer','cancel')}</div>${existing && isRecurring?'<p class="status notice">Seul ce jour sera modifié. Les autres occurrences gardent leur horaire et leurs actions.</p>':''}<label class="field">Nom<input required name="summary" maxlength="120" value="${esc(d.summary)}" placeholder="Ex. Chauffe atelier ou ouverture barrière"></label><div class="grid2"><label>Date${existing?' de cette occurrence':' de début'}<input required type="date" name="date" value="${d.date}"></label>${!existing?`<label>Répétition<select name="repeat"><option value="once" ${d.repeat==='once'?'selected':''}>Une seule fois</option><option value="weekly" ${d.repeat==='weekly'?'selected':''}>Chaque semaine</option></select></label>`:'<p class="hint">Pour déplacer, changez la date ou l’heure. Vous pouvez aussi glisser la programmation sur le calendrier.</p>'}</div>${!existing && d.repeat==='weekly'?`<div class="field"><label>Jours habituels</label><div class="weekdays">${[1,2,3,4,5,6,0].map(i=>`<label class="check"><input type="checkbox" data-weekday="${i}" ${d.days.includes(i)?'checked':''}>${['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'][i]}</label>`).join('')}</div><p class="hint">Créez autant de programmations que nécessaire pour des horaires différents.</p></div>`:''}<h3>Au début</h3>${this._timeSelect('start',`${d.start_hour}:${d.start_minute}`)}${this._actionsHtml('start_actions')}${this._button('+ Ajouter une action','add-start')}<label class="check field"><input name="has_end" type="checkbox" ${d.has_end?'checked':''}>Prévoir une heure et des actions de fin</label>${d.has_end?`<h3>À la fin</h3>${this._timeSelect('end',`${d.end_hour}:${d.end_minute}`)}<p class="hint">Si l’heure de fin précède l’heure de début, le créneau se termine le lendemain.</p>${this._actionsHtml('end_actions')}${this._button('+ Ajouter une action à la fin','add-end')}`:'<p class="hint">Action ponctuelle : adapté au démarrage des Frech, sans arrêt programmé.</p>'}<div class="grid2 field"><label>Couleur<input type="color" name="color" value="${eventColor(d.color)}"></label><label>Note facultative<textarea name="note" rows="2">${esc(d.note)}</textarea></label></div>${!this._config.demo && !this._snapshot.ready?'<p class="status">Le premier enregistrement préparera l’exécution du calendrier en mode test. Un administrateur est nécessaire.</p>':''}<div class="buttons"><button class="primary" type="submit" ${this._busy?'disabled':''}>${this._busy?'Enregistrement…':'Enregistrer'}</button>${this._button('Annuler','cancel')}${existing?this._button(isRecurring?'Supprimer ce jour':'Supprimer','delete','class="danger"'):''}</div>${existing && isRecurring?`<details><summary>Toute la série</summary><p class="hint">La suppression de série retire toutes ses occurrences, y compris les jours déplacés.</p>${this._button('Supprimer toute la série','delete-series','class="danger"')}</details>`:''}${d.deleteScope?`<div class="status"><p>${d.deleteScope==='series'?'Supprimer toutes les occurrences de cette série ?':'Supprimer uniquement cette occurrence ?'}</p>${this._button('Confirmer la suppression','confirm-delete','class="danger"')} ${this._button('Conserver','keep')}</div>`:''}</form>`;
+  }
+  _settingsHtml(){return `<section class="panel"><div class="toolbar"><h2>Réglages du planning</h2>${this._button('Fermer','settings')}</div><p>Choisissez directement les appareils et les actions dans chaque programmation. Plusieurs actions peuvent partager le même horaire.</p><p class="status">${esc(this._executionLabel())}</p>${!this._config.demo && !this._snapshot.ready?this._button('Préparer l’exécution en mode test','setup','class="primary"'):''}<p class="hint">Un administrateur autorise une nouvelle entité lors de son premier enregistrement. Les autres utilisateurs peuvent ensuite la choisir librement. Les démarrages Frech déjà configurés conservent leur script de contrôle.</p><p class="hint">Pour les couleurs, la densité, la vue initiale et les week-ends : Modifier le tableau de bord → Modifier la carte → Personnalisation. La largeur se règle dans Disposition.</p></section>`;}
+  _render(){
+    if(!this._initialized)return;
+    const a=this._config.appearance,title=this._view==='week'?`Semaine du ${this._label(shiftDay(this._selected,-((weekday(this._selected)-a.first_day+7)%7)))}`:new Intl.DateTimeFormat('fr-BE',{timeZone:'UTC',month:'long',year:'numeric'}).format(new Date(`${this._month}-01T12:00Z`));
+    this.shadowRoot.innerHTML=`<style>${PLANNING_STYLE}</style><ha-card><main data-density="${a.density}" data-event-style="${a.event_style}" ${a.accent_color?`style="--accent:${a.accent_color}"`:''}><header class="toolbar"><h1>${esc(this._config.title)}</h1><div class="buttons">${this._button('+ Programmation','new','class="primary" '+(!this._config.demo && !this._loaded?'disabled':''))}${this._button('⚙ Réglages','settings')}</div></header><div class="status">${esc(this._executionLabel())}</div>${this._error?`<div role="alert" class="status error">${esc(this._error)}</div>`:''}${this._notice?`<div role="status" class="status notice">${esc(this._notice)}</div>`:''}<nav class="tabs" aria-label="Vue du calendrier">${Object.entries({month:'Mois',week:'Semaine',agenda:'Agenda'}).map(([id,label])=>this._button(label,`view-${id}`,`aria-pressed="${id===this._view}"`)).join('')}${this._button('Aujourd’hui','today')}</nav><div class="toolbar"><h2>${esc(title)}</h2><div class="buttons">${this._button('‹','previous','aria-label="Période précédente"')}${this._button('›','next','aria-label="Période suivante"')}${this._button('↻','refresh','aria-label="Actualiser"')}</div></div>${this._calendarHtml()}<p class="hint">Glissez une programmation pour déplacer seulement ce jour. En vue Semaine, l’heure se règle par pas de 10 minutes. Vous pouvez aussi cliquer pour modifier la date et l’heure.</p>${this._settings?this._settingsHtml():''}${this._draft?this._formHtml():''}</main></ha-card>`;
+  }
+  _open(event,date=this._selected){
+    this._error='';this._notice='';this._settings=false;
+    const start=event?localMinute(event.start,this._zone):`${date}T06:00`,end=event?localMinute(event.end,this._zone):`${date}T07:00`,m=event?this._meta(event):null;
+    this._draft={...(event || {}),original:event?{...event}:null,actionSnapshot:structuredClone(this._snapshot),readonly:!!event && !m,calendar:this._config.calendar || 'calendar.demo',event_id:m?.id || newEventId(),summary:event?.summary || '',date:start.slice(0,10),start_hour:start.slice(11,13),start_minute:start.slice(14,16),end_hour:end.slice(11,13),end_minute:end.slice(14,16),repeat:event?.rrule?'weekly':'once',days:[weekday(date)],has_end:m?.has_end || false,start_actions:m?structuredClone(m.start_actions):[{target:'',op:''}],end_actions:m?structuredClone(m.end_actions):[],color:m?.color || '#3689e6',note:m?.note || '',scope:'occurrence'};
+    this._render();this.shadowRoot.querySelector('form,.panel')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  _change(event){
+    const el=event.target,d=this._draft;if(!d)return;
+    const rowEl=el.closest('.action-row');
+    if(rowEl){const row=d[rowEl.dataset.phase][Number(rowEl.dataset.index)];if(el.hasAttribute('data-target')){row.target=el.value;row.op=defaultOperation(this._record(row.target));this._render();}else if(el.hasAttribute('data-operation'))row.op=el.value;return;}
+    if(el.dataset.weekday!==undefined){d.days=Array.from(this.shadowRoot.querySelectorAll('[data-weekday]:checked'),e=>Number(e.dataset.weekday));return;}
+    if(!el.name)return;d[el.name]=el.type==='checkbox'?el.checked:el.value;
+    if(el.name==='date' && !d.uid && d.repeat==='once' && /^\d{4}-\d{2}-\d{2}$/.test(d.date))d.days=[weekday(d.date)];
+    if(el.name==='has_end' && d.has_end && !d.end_actions.length)d.end_actions=d.start_actions.filter(a=>a.target && oppositeOperation(a.op) && Object.hasOwn(operationsFor(this._record(a.target)),oppositeOperation(a.op))).map(a=>({target:a.target,op:oppositeOperation(a.op)}));
+    if(['repeat','has_end'].includes(el.name))this._render();
+  }
+  _draftDates(d){
+    const time=`${d.start_hour}:${d.start_minute}`;
+    const start=!d.uid && d.repeat==='weekly'?weeklyStart(d.date,time,d.days,this._zone,Date.now(),this._config.demo):toInstant(`${d.date}T${time}`,this._zone);
+    let end=new Date(Date.parse(start)+60000).toISOString();
+    if(d.has_end){let day=dayOf(start,this._zone),endTime=`${d.end_hour}:${d.end_minute}`;if(endTime<=time)day=shiftDay(day,1);end=toInstant(`${day}T${endTime}`,this._zone);}
+    return {start,end};
+  }
+  async _freshFor(event,target){
+    const from=[dayOf(event.start,this._zone),target?dayOf(target.start,this._zone):'9999-12-31'].sort()[0],to=[dayOf(event.end,this._zone),target?dayOf(target.end,this._zone):'0000-01-01'].sort().at(-1);
+    const rows=await this._fetch(shiftDay(from,-1),shiftDay(to,2)),same=rows.find(x=>x.uid===event.uid && (x.recurrence_id || '')===(event.recurrence_id || ''));
+    if(!same || scheduleFingerprint(same)!==scheduleFingerprint(event))throw new Error('Cette occurrence a changé ou a été supprimée. Actualisez avant de recommencer.');
+    const issue=mutationIssue(same,'occurrence',rows);if(issue)throw new Error(issue);return rows;
+  }
+  _demoWrite(payload){
+    const row=this._demoRows.find(x=>x.uid===payload.uid);
+    if(payload.type.endsWith('/delete')){if(payload.recurrence_id){row.deleted=[...(row.deleted || []),payload.recurrence_id];if(row.exceptions)delete row.exceptions[payload.recurrence_id];}else this._demoRows=this._demoRows.filter(x=>x.uid!==payload.uid);return;}
+    const saved={...payload.event,start:payload.event.dtstart,end:payload.event.dtend,uid:payload.uid || newEventId()};
+    if(payload.recurrence_id){row.exceptions={...row.exceptions,[payload.recurrence_id]:saved};}else if(row)Object.assign(row,saved);else this._demoRows.push(saved);
+  }
+  async _write(payload,draft){
+    if(this._config.demo){this._demoWrite(payload);return;}
+    try{await this._hass.callWS(payload);}catch(error){
+      if(!draft)throw error;
+      const rows=await this._fetch(shiftDay(dayOf(draft.start,this._zone),-1),shiftDay(dayOf(draft.end,this._zone),2));
+      const found=rows.filter(e=>e.meta?.id===draft.event_id && e.start===draft.start && e.end===draft.end && e.summary===draft.summary.trim() && e.description===payload.event.description && (!payload.uid || e.uid===payload.uid) && (!payload.recurrence_id || e.recurrence_id===payload.recurrence_id));
+      if(found.length!==1)throw error;
+    }
+  }
+  async _save(){
+    if(this._busy || !this._draft)return;this._busy=true;this._error='';const d=this._draft;
+    try{
+      if(!this._config.demo && d.pendingCreate){const pending=d.pendingCreate,rows=await this._fetch(shiftDay(dayOf(pending.start,this._zone),-1),shiftDay(dayOf(pending.end,this._zone),2));const found=rows.filter(e=>e.meta?.id===d.event_id);if(found.length){if(!found.some(e=>e.start===pending.start && e.end===pending.end && e.description===pending.description))throw new Error('Une programmation avec cet identifiant existe déjà. Actualisez avant de recommencer.');this._draft=null;this._notice='La première sauvegarde est déjà enregistrée. Ouvrez la programmation pour la modifier.';await this._load();return;}}
+      if(!d.summary.trim())throw new Error('Donnez un nom à la programmation.');
+      Object.assign(d,this._draftDates(d));
+      const initialIssue=validateSchedule(d,this._choices().map(r=>({...r,id:r.value})),Date.now(),this._config.demo);if(initialIssue)throw new Error(initialIssue);
+      if(d.original){const issue=mutationIssue(d.original,'occurrence',this._events);if(issue)throw new Error(issue);occurrenceSelector(d.original);if(!this._config.demo)await this._freshFor(d.original,d);}
+      let actions=[...d.start_actions,...(d.has_end?d.end_actions:[])],resolved;
+      if(this._config.demo){resolved=actions.map(a=>{if(a.target?.startsWith('entity:')){const r=this._record(a.target);if(!this._snapshot.records.some(x=>x.id===r.id))this._snapshot.records.push(r);return {...a,target:r.id};}return a;});}
+      else{if(!this._snapshot.ready)this._snapshot=await this._store.setup(VERSION,this._config.execution_automation);const result=await this._store.prepare(d.actionSnapshot,actions);this._snapshot=result.snapshot;resolved=result.actions;}
+      const draft={...d,start_actions:resolved.slice(0,d.start_actions.length),end_actions:d.has_end?resolved.slice(d.start_actions.length):[],rrule:!d.uid && d.repeat==='weekly'?`FREQ=WEEKLY;BYDAY=${[...d.days].sort((a,b)=>((a+6)%7)-((b+6)%7)).map(i=>['SU','MO','TU','WE','TH','FR','SA'][i]).join(',')}`:d.rrule};
+      const issue=validateSchedule(draft,this._snapshot.records,Date.now(),this._config.demo);if(issue)throw new Error(issue);
+      const payload=schedulePayload(draft);if(!this._config.demo){if(d.original)await this._freshFor(d.original,draft);else d.pendingCreate={start:draft.start,end:draft.end,description:payload.event.description};}await this._write(payload,draft);this._draft=null;this._notice=d.uid?'Cette occurrence a été modifiée.':'Programmation enregistrée.';await this._load();
+    }catch(e){this._error=e.message;}finally{this._busy=false;this._render();}
+  }
+  async _move(event,date,minute){
+    if(this._busy || !this._meta(event))return;this._busy=true;this._error='';
+    try{const issue=mutationIssue(event,'occurrence',this._events);if(issue)throw new Error(issue);occurrenceSelector(event);const meta=this._meta(event),draft={...event,...shiftedOccurrence(event,date,minute,this._zone),scope:'occurrence',event_id:meta.id,...meta};if(!this._config.demo){await this._freshFor(event,draft);if(!this._snapshot.ready)this._snapshot=await this._store.setup(VERSION,this._config.execution_automation);const prepared=await this._store.prepare(this._snapshot,[...draft.start_actions,...draft.end_actions]);this._snapshot=prepared.snapshot;}const invalid=validateSchedule(draft,this._snapshot.records,Date.now(),this._config.demo);if(invalid)throw new Error(invalid);await this._write(schedulePayload(draft),draft);this._draft=null;this._notice='Cette occurrence a été déplacée. Les autres jours restent inchangés.';await this._load();}catch(e){this._error=e.message;}finally{this._busy=false;this._render();}
+  }
+  async _delete(){
+    if(this._busy || !this._draft?.original)return;this._busy=true;this._error='';const d=this._draft,event=d.original,scope=d.deleteScope;
+    try{let rows=this._events;if(!this._config.demo){rows=await this._freshFor(event);if(scope==='series'){const today=dayOf(Date.now(),this._zone);rows.push(...await this._fetch(shiftDay(today,-1),shiftDay(today,2)));}}const issue=mutationIssue(event,scope,rows);if(issue)throw new Error(issue);const payload=occurrenceDeletePayload(event,scope);try{await this._write(payload);}catch(error){if(this._config.demo)throw error;const fresh=await this._fetch(shiftDay(dayOf(event.start,this._zone),-1),shiftDay(dayOf(event.end,this._zone),2));if(fresh.some(x=>x.uid===event.uid && (scope==='series' || (x.recurrence_id || '')===(event.recurrence_id || ''))))throw error;}this._draft=null;this._notice=scope==='series'?'Série supprimée.':'Cette occurrence a été supprimée.';await this._load();}catch(e){this._error=e.message;}finally{this._busy=false;this._render();}
+  }
+  async _click(event){
+    const target=event.target.closest('button');if(!target || this._busy)return;
+    if(target.hasAttribute('data-remove-action')){const row=target.closest('.action-row');this._draft[row.dataset.phase].splice(Number(row.dataset.index),1);this._render();return;}
+    if(target.dataset.event){const item=this._events.find(x=>x.key===target.dataset.event);if(item)this._open(item,dayOf(item.start,this._zone));return;}
+    if(target.dataset.day){this._selected=target.dataset.day;this._open(null,this._selected);return;}
+    const action=target.dataset.action;
+    if(action?.startsWith('view-')){this._view=action.slice(5);this._render();return;}
+    switch(action){
+      case 'new':this._open(null);break;
+      case 'cancel':this._draft=null;this._error='';this._render();break;
+      case 'settings':this._settings=!this._settings;this._draft=null;this._render();break;
+      case 'add-start':case 'add-end':this._draft[action==='add-start'?'start_actions':'end_actions'].push({target:'',op:''});this._render();break;
+      case 'delete':case 'delete-series':this._draft.deleteScope=action==='delete'?'occurrence':'series';this._render();break;
+      case 'keep':delete this._draft.deleteScope;this._render();break;
+      case 'confirm-delete':await this._delete();break;
+      case 'setup':this._busy=true;try{this._snapshot=await this._store.setup(VERSION,this._config.execution_automation);this._notice='Exécution préparée en mode test.';this._error='';}catch(e){this._error=e.message;}finally{this._busy=false;this._render();}break;
+      case 'refresh':await this._load();break;
+      case 'today':this._selected=dayOf(Date.now(),this._zone);this._month=this._selected.slice(0,7);this._render();await this._load();break;
+      case 'previous':case 'next':if(this._loading)return;if(this._view==='week'){this._selected=shiftDay(this._selected,action==='next'?7:-7);this._month=this._selected.slice(0,7);}else{const date=new Date(`${this._month}-01T12:00Z`);date.setUTCMonth(date.getUTCMonth()+(action==='next'?1:-1));this._month=date.toISOString().slice(0,7);this._selected=`${this._month}-01`;}this._render();await this._load();break;
     }
   }
 }
-Object.assign(PlanningChauffeCard.prototype, PlanningDeviceUI, PlanningCalendarViews);
-if (!customElements.get('ha-planning-chauffe-card')) customElements.define('ha-planning-chauffe-card', PlanningChauffeCard);
-if (!customElements.get('ha-planning-card')) customElements.define('ha-planning-card', class extends PlanningChauffeCard {});
-window.customCards = window.customCards || [];
-if (!window.customCards.some(c => c.type === 'ha-planning-card')) window.customCards.push({ type: 'ha-planning-card', name: 'Planning', description: 'Programmations, horaires récurrents et exclusions. Démarre vide.', preview: true, documentationURL: 'https://github.com/Euro-Locks-Belgium/ha-planning-card' });
+if(!customElements.get('ha-planning-card'))customElements.define('ha-planning-card',PlanningCard);
+if(!customElements.get('ha-planning-chauffe-card'))customElements.define('ha-planning-chauffe-card',class extends PlanningCard{});
+window.customCards=window.customCards || [];
+if(!window.customCards.some(c=>c.type==='ha-planning-card'))window.customCards.push({type:'ha-planning-card',name:'Planning',description:'Calendrier avec actions ponctuelles ou créneaux de début et de fin.',preview:true,documentationURL:'https://github.com/Euro-Locks-Belgium/ha-planning-card'});
 
 })();

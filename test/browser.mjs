@@ -1,368 +1,51 @@
-// Optional browser suite: install playwright or set PLANNING_NODE_MODULES to a
-// directory containing it. PLANNING_BROWSER can select a system Chromium binary.
-import { createRequire } from 'node:module';
-import { readFile, mkdir } from 'node:fs/promises';
+import {createRequire} from 'node:module';
+import {readFile,mkdir} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
-import { fileURLToPath } from 'node:url';
-import { toInstant, localMinute, dayOf, shiftDay } from '../src/model.js';
-const require = process.env.PLANNING_NODE_MODULES ? createRequire(`${process.env.PLANNING_NODE_MODULES.replaceAll('\\', '/')}/package.json`) : createRequire(import.meta.url);
-const { chromium } = require('playwright');
-const root = new URL('../', import.meta.url);
-const bundle = await readFile(new URL('dist/ha-planning-card.js', root), 'utf8');
-const fixture = await readFile(new URL('test/fixtures/hass.js', root), 'utf8');
-const browser = await chromium.launch({ headless: true, ...(process.env.PLANNING_BROWSER ? { executablePath: process.env.PLANNING_BROWSER } : {}) });
-const page = await browser.newPage({ viewport: { width: 1100, height: 1200 }, timezoneId: 'America/New_York' });
-page.setDefaultTimeout(6000);
-const errors = []; page.on('pageerror', e => errors.push(e.message));
-await page.route('https://planning.test/**', route => route.fulfill({ contentType: 'text/html', body: '<style>body{margin:0;background:#111315;--primary-background-color:#111315;--card-background-color:#1d1f21;--primary-text-color:#e8edf0;--secondary-text-color:#a6b2bb;--divider-color:#363b40;--primary-color:#32c5eb;--text-primary-color:#002c39}</style><ha-planning-card></ha-planning-card>' }));
-async function mount(demo, empty = false, mode = 'legacy') {
-  await page.goto('https://planning.test/');
-  await page.addScriptTag({ content: bundle });
-  await page.addScriptTag({ content: fixture });
-  await page.evaluate(([d, empty, mode]) => window.setupPlanningTest(d, empty, mode), [demo, empty, mode]);
-  await page.locator('ha-planning-card .ha-day').first().waitFor();
-  if (!demo && !empty) await page.waitForFunction(() => window.testPlanning.card._loaded);
-}
-const card = page.locator('ha-planning-card');
-const button = label => card.getByRole('button', { name: label, exact: true });
-const start = toInstant(`${shiftDay(dayOf(Date.now(), 'Europe/Brussels'), 5)}T06:00`, 'Europe/Brussels');
-const day = dayOf(start, 'Europe/Brussels');
-const setTime = async value => { const [h,m] = value.split(':'); await card.locator('select[name=hour]').selectOption(h); await card.locator('select[name=minute]').selectOption(m); };
-const confirm = () => button('Confirmer dans Home Assistant').click();
-try {
-  await mount(true, true);
-  assert.equal(await card.locator('h1').innerText(), 'Planning');
-  assert.equal(await card.locator('.ha-dayevent,.ha-launch,.ha-closure-item').count(), 0);
-  assert.equal(await page.evaluate(() => testPlanning.card._config.groups.length), 0);
-  assert.equal(await button('Ajouter une programmation').isDisabled(), true);
-  assert.equal(await page.evaluate(() => testPlanning.reads.length + testPlanning.ws.length), 0);
-  assert.equal(await page.evaluate(() => typeof testPlanning.card.getGridOptions().rows), 'number');
-  await mkdir(new URL('test-results/', root), { recursive: true });
-  await card.screenshot({ path: fileURLToPath(new URL('test-results/demo.png', root)) });
-  await button('Ajouter une exclusion').click();
-  for (const name of ['summary','start','end']) assert.equal(await card.locator(`input[name="${name}"]`).inputValue(), '');
-  await card.getByRole('button', { name: 'Fermer', exact: true }).click();
-  // The editor also starts empty; added groups have no invented names or calendar.
-  await page.evaluate(() => {
-    const editor = document.createElement('ha-planning-card-editor');
-    editor.setConfig(testPlanning.card._config); editor.hass = testPlanning.hass;
-    editor.addEventListener('config-changed', event => { window.editorConfig = event.detail.config; });
-    document.body.append(editor);
-  });
-  const editor = page.locator('ha-planning-card-editor');
-  assert.equal(await editor.locator('fieldset').count(), 0);
-  await editor.locator('details').last().evaluate(e => { e.open = true; });
-  await editor.getByRole('button', { name: 'Ajouter un groupe', exact: true }).click();
-  assert.equal(await editor.locator('[data-field="name"]').inputValue(), '');
-  assert.deepEqual(await page.evaluate(() => editorConfig.groups), [{ name: '', calendar: '' }]);
-  await editor.getByRole('button', { name: 'Retirer ce groupe', exact: true }).click();
-  assert.deepEqual(await page.evaluate(() => editorConfig.groups), []);
-  await editor.locator('details').filter({hasText:'Appareils programmables'}).evaluate(e => { e.open = true; });
-  await editor.getByRole('button', {name:'Ajouter un appareil',exact:true}).click();
-  assert.equal(await editor.locator('[data-device="0"][data-field="id"]').inputValue(), '');
-  await editor.locator('[data-device="0"][data-field="name"]').fill('Machine A');
-  await editor.locator('[data-device="0"][data-field="name"]').dispatchEvent('change');
-  await editor.locator('[data-device="0"][data-field="id"]').fill('machine_a');
-  await editor.locator('[data-device="0"][data-field="id"]').dispatchEvent('change');
-  assert.deepEqual(await page.evaluate(() => editorConfig.devices), [{id:'machine_a',name:'Machine A'}]);
-  await editor.getByRole('button', {name:'Retirer cet appareil',exact:true}).click();
-  assert.deepEqual(await page.evaluate(() => editorConfig.devices), []);
-  await editor.locator('select[data-field="calendar"]').first().selectOption('calendar.test_a');
-  assert.equal(await page.evaluate(() => editorConfig.demo), false);
-  assert.equal(await page.evaluate(() => editorConfig.calendar), 'calendar.test_a');
-  assert.equal(await editor.locator('select[data-field="closure_calendar"]').count(), 0);
-  await editor.evaluate(e => e.remove());
-  // An unconfigured connected card remains empty and performs no API request.
-  await mount(false, true);
-  assert.equal(await card.locator('.ha-dayevent,.ha-launch,.ha-closure-item').count(), 0);
-  assert.equal(await page.evaluate(() => testPlanning.reads.length + testPlanning.ws.length), 0);
-  // One calendar, zero configured groups: the complete create/exclusion flow.
-  await mount(false, false, 'single');
-  assert.equal(await button('Ajouter une programmation').isEnabled(), true);
-  assert.equal(await page.evaluate(() => testPlanning.card._config.groups.length), 0);
-  assert.equal(await page.evaluate(() => testPlanning.reads.length), 1);
-  await button('Ajouter une programmation').click();
-  assert.equal(await card.locator('select[name="group"]').count(), 0);
-  await card.locator('input[name="date"]').fill(day);
-  await setTime('06:00');
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 1 && !testPlanning.card._busy);
-  assert.equal(await page.evaluate(() => testPlanning.ws[0].entity_id), 'calendar.test_a');
-  assert.equal(await page.evaluate(() => JSON.parse(testPlanning.ws[0].event.description).group), '');
-  assert.equal(await card.locator('.ha-closure-item').count(), 0);
-  assert.match(await card.locator('.ha-launch').innerText(), /Programmation ponctuelle/);
-  await button('Ajouter une exclusion').click();
-  await card.locator('input[name="summary"]').fill('Arrêt');
-  await card.locator('input[name="start"]').fill(`${day}T00:00`);
-  await card.locator('input[name="end"]').fill(`${shiftDay(day, 1)}T00:00`);
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 2 && !testPlanning.card._busy);
-  assert.equal(await page.evaluate(() => testPlanning.ws[1].entity_id), 'calendar.test_a');
-  assert.equal(await page.evaluate(() => JSON.parse(testPlanning.ws[1].event.description).kind), 'closure');
-  assert.match(await card.locator('.ha-launch').innerText(), /Bloqué par exclusion/);
-  await button('Ajouter une programmation').click();
-  await card.locator('input[name="date"]').fill(day);
-  await setTime('08:00');
-  await button('Vérifier la programmation').click();
-  assert.match(await card.locator('.ha-editor .ha-error').innerText(), /exclusion/);
-  assert.equal(await page.evaluate(() => testPlanning.ws.length), 2);
-  await card.getByRole('button', { name: 'Fermer', exact: true }).click();
-  await card.locator('.ha-closure-item [data-edit]').click();
-  await card.locator('input[name="end"]').fill(`${day}T06:00`);
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 3 && !testPlanning.card._busy);
-  assert.match(await card.locator('.ha-launch').innerText(), /Programmation ponctuelle/);
-  await card.getByRole('tab', { name: 'Horaires habituels' }).click();
-  await card.getByRole('button', { name: 'Ajouter un horaire', exact: true }).click();
-  assert.equal(await card.locator('select[name="group"]').count(), 0);
-  await card.locator('select[name="day"]').selectOption('1');
-  await setTime('01:00');
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 4 && !testPlanning.card._busy);
-  assert.equal(await page.evaluate(() => testPlanning.ws[3].entity_id), 'calendar.test_a');
-  assert.equal(await page.evaluate(() => testPlanning.ws[3].event.rrule), 'FREQ=WEEKLY;BYDAY=MO');
-  assert.equal(await page.evaluate(() => JSON.parse(testPlanning.ws[3].event.description).group), '');
-  // Named groups can share the calendar without conflicting at the same instant.
-  await mount(false, false, 'shared-groups');
-  for (const index of ['1', '0']) {
-    await button('Ajouter une programmation').click();
-    await card.locator('select[name="group"]').selectOption(index);
-    await card.locator('input[name="date"]').fill(day);
-    await setTime('06:00');
-    await button('Vérifier la programmation').click(); await confirm();
-    await page.waitForFunction(() => !testPlanning.card._busy && !testPlanning.card._editor);
-  }
-  assert.deepEqual(await page.evaluate(() => testPlanning.ws.map(w => JSON.parse(w.event.description).group)), ['Groupe B', 'Groupe A']);
-  assert.equal(await card.locator('.ha-launch').count(), 2);
-  // Device selections, custom colors and several independent weekly series.
-  await mount(false, false, 'single');
-  await page.evaluate(() => {
-    testPlanning.card.setConfig({...testPlanning.card._config, devices:[{id:'frech_1',name:'Frech 1'},{id:'frech_3',name:'Frech 3'},{id:'frech_20',name:'Frech 20'}]});
-  });
-  await page.waitForFunction(() => testPlanning.card._loaded);
-  const programs = [
-    {name:'Matin',day:'1',time:'06:20',devices:['frech_1','frech_3'],color:'#247ac7'},
-    {name:'Grand bain',day:'1',time:'08:40',devices:['frech_20'],color:'#9b5de5'},
-    {name:'Mardi',day:'2',time:'06:10',devices:['frech_1'],color:'#e78826'},
-  ];
-  for (const [index, program] of programs.entries()) {
-    await card.getByRole('tab', {name:'Horaires habituels'}).click();
-    await button('Ajouter un horaire').click();
-    assert.deepEqual(await card.locator('select[name="minute"] option').evaluateAll(options => options.map(o => o.value)), ['', '00','10','20','30','40','50']);
-    assert.equal(await card.locator('select[name="hour"] option').count(), 25);
-    await card.locator('input[name="summary"]').fill(program.name);
-    await card.locator('select[name="day"]').selectOption(program.day);
-    await setTime(program.time);
-    assert.ok((await card.locator('select[name="hour"]').boundingBox()).width >= 80);
-    assert.ok((await card.locator('select[name="minute"]').boundingBox()).width >= 80);
-    await card.locator('input[name="color"]').fill(program.color);
-    if (index === 0) {
-      await button('Vérifier la programmation').click();
-      assert.match(await card.locator('.ha-editor .ha-error').innerText(), /au moins un appareil/);
-      assert.equal(await page.evaluate(() => testPlanning.ws.length), 0);
-    }
-    for (const id of program.devices) await card.locator(`input[name="device"][value="${id}"]`).check();
-    await button('Vérifier la programmation').click();
-    assert.match(await card.locator('.ha-summary').innerText(), /Frech/);
-    await confirm();
-    await page.waitForFunction(count => testPlanning.ws.length === count && !testPlanning.card._busy, index + 1);
-  }
-  await card.getByRole('tab', {name:'Horaires habituels'}).click();
-  assert.equal(await card.locator('.ha-weeklyrow').count(), 3);
-  assert.equal(await button('Ajouter un horaire').isEnabled(), true);
-  for (const [index, program] of programs.entries()) {
-    const meta = await page.evaluate(i => JSON.parse(testPlanning.ws[i].event.description), index);
-    assert.deepEqual(meta.devices, program.devices);
-    assert.equal(meta.color, program.color);
-  }
-  await card.screenshot({path:fileURLToPath(new URL('test-results/multiple-weekly.png', root))});
-  await card.locator('.ha-weeklyrow').filter({hasText:'Grand bain'}).getByRole('button', {name:'Modifier la série'}).click();
-  assert.equal(await card.locator('input[name="device"][value="frech_20"]').isChecked(), true);
-  assert.equal(await card.locator('input[name="color"]').inputValue(), '#9b5de5');
-  await card.locator('input[name="color"]').fill('#23b093');
-  await setTime('09:20');
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 4 && !testPlanning.card._busy);
-  await button('Ajouter une programmation').click();
-  await card.locator('input[name="summary"]').fill('Reprise après arrêt');
-  await card.locator('input[name="date"]').fill(shiftDay(day, 1));
-  await setTime('05:20');
-  await card.locator('input[name="device"][value="frech_1"]').check();
-  const seriesId = await page.evaluate(() => JSON.parse(testPlanning.ws[0].event.description).id);
-  await card.locator('select[name="replace_series"]').selectOption(seriesId);
-  await card.locator('input[name="color"]').fill('#d653a2');
-  await card.screenshot({path:fileURLToPath(new URL('test-results/program-devices.png', root))});
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 5 && !testPlanning.card._busy);
-  const restartMeta = await page.evaluate(() => JSON.parse(testPlanning.ws[4].event.description));
-  assert.equal(restartMeta.replace_series, seriesId);
-  assert.equal(restartMeta.replace, false);
-  assert.equal(await card.locator('.ha-day.selected .ha-dayevent').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(214, 83, 162)');
-  // Deleting a weekly series leaves the two other series and the one-off intact.
-  await card.getByRole('tab', {name:'Horaires habituels'}).click();
-  await card.locator('.ha-weeklyrow').filter({hasText:'Grand bain'}).getByRole('button', {name:'Supprimer',exact:true}).click();
-  await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 6 && !testPlanning.card._busy);
-  await card.getByRole('tab', {name:'Horaires habituels'}).click();
-  assert.equal(await card.locator('.ha-weeklyrow').count(), 2);
-  assert.equal(await page.evaluate(() => testPlanning.rows['calendar.test_a'].length), 3);
-  assert.equal(await page.evaluate(() => testPlanning.ws.every(r => r.type.startsWith('calendar/event/'))), true);
-  // A full machine list remains usable in a narrow HA card on a desktop.
-  await page.evaluate(() => testPlanning.card.setConfig({...testPlanning.card._config, devices:[1,2,3,4,5,6,7,10,11,12,13,14,15,16,17,19,20,21].map(n => ({id:`frech_${n}`,name:`Frech ${n}`}))}));
-  await page.waitForFunction(() => testPlanning.card._loaded);
-  await button('Ajouter une programmation').click();
-  await page.setViewportSize({width:1440,height:1200});
-  await card.evaluate(el => {el.style.width='380px';});
-  assert.equal(await card.locator('input[name="device"]').count(), 18);
-  assert.ok((await card.locator('select[name="minute"]').boundingBox()).width >= 80);
-  assert.equal(await card.evaluate(el => el.shadowRoot.querySelector('ha-card').scrollWidth <= el.clientWidth + 1), true);
-  await card.locator('input[name="device"][value="frech_21"]').check();
-  assert.equal(await card.locator('input[name="device"][value="frech_21"]').isChecked(), true);
-  await button('Vérifier la programmation').scrollIntoViewIfNeeded();
-  assert.equal(await button('Vérifier la programmation').isVisible(), true);
-  await card.screenshot({path:fileURLToPath(new URL('test-results/devices-narrow.png', root))});
-  await card.evaluate(el => {el.style.width='';});
-  await page.setViewportSize({width:1100,height:1200});
-  await mount(true);
-  // Local HTTP Home Assistant can lack randomUUID; getRandomValues still works.
-  await page.evaluate(() => { window.crypto.randomUUID = undefined; });
-  assert.equal(await page.evaluate(() => testPlanning.reads.length + testPlanning.ws.length), 0);
-  await button('Ajouter une programmation').click();
-  assert.equal(await card.locator('input[name="date"]').inputValue(), '');
-  assert.equal(await card.locator('select[name="hour"]').inputValue(), '');
-  assert.equal(await card.locator('select[name="group"]').inputValue(), '');
-  await card.locator('select[name="group"]').selectOption('0');
-  await card.locator('input[name="date"]').fill(day);
-  await setTime('06:00');
-  await button('Vérifier la programmation').click();
-  await button('Confirmer en mode local').click();
-  assert.equal(await page.evaluate(() => testPlanning.reads.length + testPlanning.ws.length), 0);
-  await mount(false);
-  await button('Ajouter une programmation').click();
-  await card.locator('select[name="group"]').selectOption('0');
-  await card.locator('input[name="date"]').fill(day);
-  await setTime('06:00');
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 1 && !testPlanning.card._busy);
-  const created = await page.evaluate(() => testPlanning.ws[0]);
-  assert.equal(created.event.dtstart, start);
-  assert.equal(created.type, 'calendar/event/create');
-  assert.equal(created.entity_id, 'calendar.test_a');
-  assert.match(await card.locator('.ha-sidebar').innerText(), /06:00/);
-  // Preserve an existing off-grid minute when opening an old event.
-  await page.evaluate(() => {
-    const row = testPlanning.rows['calendar.test_a'][0];
-    row.start = new Date(Date.parse(row.start) + 15 * 60000).toISOString();
-    row.end = new Date(Date.parse(row.end) + 15 * 60000).toISOString();
-  });
-  await card.getByRole('button', {name:'Actualiser',exact:true}).click();
-  await card.locator('[data-edit]').first().click();
-  assert.equal(await card.locator('select[name="minute"]').inputValue(), '15');
-  assert.match(await card.locator('select[name="minute"] option:checked').innerText(), /valeur existante/);
-  await setTime('07:10');
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 2 && !testPlanning.card._busy);
-  assert.equal(await page.evaluate(() => testPlanning.ws[1].type), 'calendar/event/update');
-  await card.locator('[data-delete]').first().click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 3 && !testPlanning.card._busy);
-  assert.equal(await page.evaluate(() => testPlanning.ws[2].type), 'calendar/event/delete');
-  await button('Ajouter une exclusion').click();
-  await card.locator('input[name="summary"]').fill('Indisponibilité');
-  await card.locator('input[name="start"]').fill(`${day}T00:00`);
-  await card.locator('input[name="end"]').fill(`${shiftDay(day, 1)}T00:00`);
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 4 && !testPlanning.card._busy);
-  await button('Ajouter une programmation').click();
-  await card.locator('select[name="group"]').selectOption('0');
-  await card.locator('input[name="date"]').fill(day);
-  await setTime('06:00');
-  await button('Vérifier la programmation').click();
-  assert.match(await card.locator('.ha-editor .ha-error').innerText(), /exclusion/);
-  assert.equal(await page.evaluate(() => testPlanning.ws.length), 4);
-  await card.getByRole('button', { name: 'Fermer', exact: true }).click();
-  await page.evaluate(() => testPlanning.failReads(true));
-  await card.getByRole('button', { name: 'Actualiser', exact: true }).click();
-  assert.match(await card.locator('.ha-top-error').innerText(), /Lecture refusée/);
-  assert.equal(await button('Ajouter une programmation').isDisabled(), true);
-  await page.evaluate(() => testPlanning.failReads(false));
-  await button('Réessayer').click();
-  await page.waitForFunction(() => testPlanning.card._loaded && !testPlanning.card._error);
-  // The server accepts a create but the reply is lost. Retry must not duplicate.
-  await button('Ajouter une programmation').click();
-  await card.locator('select[name="group"]').selectOption('0');
-  await card.locator('input[name="date"]').fill(shiftDay(day, 2));
-  await setTime('06:00');
-  await button('Vérifier la programmation').click();
-  await page.evaluate(() => testPlanning.loseNextReply());
-  await confirm();
-  await page.waitForFunction(() => !testPlanning.card._busy);
-  assert.match(await card.locator('.ha-editor .ha-error').innerText(), /Connexion perdue/);
-  await confirm();
-  await page.waitForFunction(() => !testPlanning.card._busy && !testPlanning.card._editor);
-  assert.equal(await page.evaluate(() => testPlanning.ws.length), 5);
-  // Another user edits the event while this form is open: do not overwrite it.
-  await card.locator('[data-edit]').first().click();
-  await setTime('08:00');
-  await button('Vérifier la programmation').click();
-  await page.evaluate(() => { testPlanning.rows['calendar.test_a'][0].summary = 'Modification concurrente'; });
-  await confirm(); await page.waitForFunction(() => !testPlanning.card._busy);
-  assert.match(await card.locator('.ha-editor .ha-error').innerText(), /a changé/);
-  assert.equal(await page.evaluate(() => testPlanning.ws.length), 5);
-  await card.getByRole('button', { name: 'Fermer', exact: true }).click();
-  // Untrusted titles are rendered as text.
-  await page.evaluate(() => { const row = testPlanning.rows['calendar.test_fermetures'][0]; row.summary = '<img src=x onerror="window.injected=true">'; });
-  await card.getByRole('button', { name: 'Actualiser', exact: true }).click();
-  assert.equal(await card.locator('.ha-sidebar img').count(), 0);
-  assert.equal(await page.evaluate(() => window.injected), undefined);
-  await card.getByRole('tab', { name: 'Horaires habituels' }).click();
-  await card.getByRole('button', { name: 'Ajouter un horaire', exact: true }).first().click();
-  await card.locator('select[name="day"]').selectOption('1');
-  await setTime('01:00');
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 6 && !testPlanning.card._busy);
-  assert.equal(await page.evaluate(() => testPlanning.ws[5].event.rrule), 'FREQ=WEEKLY;BYDAY=MO');
-  await card.getByRole('tab', { name: 'Horaires habituels' }).click();
-  await card.getByRole('button', { name: 'Modifier la série', exact: true }).first().click();
-  await setTime('02:30');
-  await button('Vérifier la programmation').click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 7 && !testPlanning.card._busy);
-  assert.equal(await page.evaluate(() => testPlanning.ws[6].type), 'calendar/event/update');
-  assert.equal(localMinute(await page.evaluate(() => testPlanning.ws[6].event.dtstart), 'Europe/Brussels').slice(11), '02:30');
-  await card.getByRole('tab', { name: 'Horaires habituels' }).click();
-  await card.getByRole('button', { name: 'Supprimer', exact: true }).first().click(); await confirm();
-  await page.waitForFunction(() => testPlanning.ws.length === 8 && !testPlanning.card._busy);
-  assert.equal(await page.evaluate(() => testPlanning.ws[7].type), 'calendar/event/delete');
-  await card.getByRole('tab', { name: 'Calendrier', exact: true }).click();
-  await button('Ajouter une programmation').click();
-  await card.locator('select[name="group"]').selectOption('0');
-  await card.locator('input[name="date"]').fill(shiftDay(day, 4));
-  await setTime('06:00');
-  await button('Vérifier la programmation').click();
-  await page.evaluate(() => testPlanning.failWrites(true));
-  await confirm(); await page.waitForFunction(() => !testPlanning.card._busy);
-  assert.match(await card.locator('.ha-editor .ha-error').innerText(), /Permission/);
-  await page.evaluate(() => testPlanning.failWrites(false));
-  await card.getByRole('button', { name: 'Fermer', exact: true }).click();
-  await mkdir(new URL('test-results/', root), { recursive: true });
-  await card.screenshot({ path: fileURLToPath(new URL('test-results/desktop.png', root)) });
-  // Native HA grid resizing: changing the allocated height grows the calendar.
-  await page.setViewportSize({ width: 1400, height: 1400 });
-  await card.evaluate(el => { el.style.width = '1100px'; el.style.height = '900px'; });
-  const smallHeight = await card.locator('.ha-calendar').evaluate(el => el.getBoundingClientRect().height);
-  await card.evaluate(el => { el.style.height = '1200px'; });
-  const tallHeight = await card.locator('.ha-calendar').evaluate(el => el.getBoundingClientRect().height);
-  assert.ok(tallHeight > smallHeight + 150, `Expected calendar to grow with HA allocation: ${smallHeight} -> ${tallHeight}`);
-  await card.evaluate(el => { el.style.width = '380px'; el.style.height = '1000px'; });
-  const narrow = await card.evaluate(el => { const calendar=el.shadowRoot.querySelector('.ha-calendar').getBoundingClientRect(), side=el.shadowRoot.querySelector('.ha-sidebar').getBoundingClientRect(); return { calendar: calendar.width, sidebarTop: side.top, calendarBottom: calendar.bottom, width: el.getBoundingClientRect().width }; });
-  assert.ok(narrow.calendar <= narrow.width && narrow.sidebarTop >= narrow.calendarBottom, JSON.stringify(narrow));
-  await card.screenshot({ path: fileURLToPath(new URL('test-results/narrow-desktop.png', root)) });
-  await card.evaluate(el => { el.style.width = ''; el.style.height = ''; });
-  await page.setViewportSize({ width: 320, height: 2200 });
-  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= 320), true);
-  await button('Ajouter une programmation').click();
-  await card.locator('select[name="group"]').selectOption('0');
-  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= 320), true);
-  await card.screenshot({ path: fileURLToPath(new URL('test-results/mobile.png', root)) });
-  assert.deepEqual(errors, []);
-  console.log('Browser checks passed: multiple weekly series, per-event colors/devices, targeted replacement, single-calendar CRUD, shared groups, empty start, editor, legacy mode, timezone, exclusions, failures, concurrent edit, retry deduplication and HA resizing.');
-} finally { await browser.close(); }
+const require=process.env.PLANNING_NODE_MODULES?createRequire(`${process.env.PLANNING_NODE_MODULES.replaceAll('\\','/')}/package.json`):createRequire(import.meta.url);
+const {chromium}=require('playwright'),root=new URL('../',import.meta.url);
+const bundle=await readFile(new URL('dist/ha-planning-card.js',root),'utf8'),fixture=await readFile(new URL('test/fixtures/hass.js',root),'utf8');
+const browser=await chromium.launch({headless:true,...(process.env.PLANNING_BROWSER?{executablePath:process.env.PLANNING_BROWSER}:{})});
+const page=await browser.newPage({viewport:{width:1200,height:1050},timezoneId:'America/New_York'});page.setDefaultTimeout(7000);
+const errors=[];page.on('pageerror',e=>errors.push(e.message));
+await page.clock.install({time:new Date('2026-11-05T10:00:00Z')});
+await page.route('https://planning.test/**',route=>route.fulfill({contentType:'text/html',body:'<style>body{margin:0;background:#11151a;--primary-text-color:#e5edf3;--secondary-text-color:#a7b4c0;--card-background-color:#20252b;--divider-color:#3c454f;--primary-color:#35bedf}ha-planning-card{display:block;max-width:1200px;margin:auto}</style><ha-planning-card></ha-planning-card>'}));
+const card=page.locator('ha-planning-card'),button=name=>card.getByRole('button',{name,exact:true});
+async function mount(options={}){await page.goto('https://planning.test');await page.addScriptTag({content:bundle});await page.addScriptTag({content:fixture});await page.evaluate(o=>window.setupPlanningTest(o),options);await page.waitForFunction(()=>window.testPlanning.card._loaded);}
+async function startForm(name,date='2026-11-09'){await button('+ Programmation').click();await card.locator('[name=summary]').fill(name);await card.locator('[name=date]').fill(date);}
+async function save(){await button('Enregistrer').click();await page.waitForFunction(()=>!document.querySelector('ha-planning-card')._busy);assert.equal(await card.locator('[role=alert]').count(),0,await card.locator('[role=alert]').allTextContents());assert.equal(await card.locator('form').count(),0);}
+try{
+  await mount();assert.equal(await card.locator('.event').count(),0);assert.equal(await card.getByText('Ajouter une exclusion',{exact:true}).count(),0);
+  await startForm('Démarrage Frech');await card.locator('[data-target]').selectOption('frech_1');assert.deepEqual(await card.locator('[name=start_minute] option').allTextContents(),['00','10','20','30','40','50']);await save();
+  let last=await page.evaluate(()=>window.testPlanning.ws.at(-1));assert.equal(last.type,'calendar/event/create');assert.equal(JSON.parse(last.event.description).has_end,false);assert.equal(JSON.parse(last.event.description).start_actions[0].op,'start');assert.equal(last.event.rrule,undefined);
+  await startForm('Chauffe habituelle');await card.locator('[name=repeat]').selectOption('weekly');await card.locator('[data-weekday="3"]').check();await card.locator('[data-target]').selectOption('entity:switch.heat');await card.locator('[name=has_end]').check();await card.locator('[name=end_hour]').selectOption('18');await save();
+  last=await page.evaluate(()=>window.testPlanning.ws.filter(p=>p.type==='calendar/event/create' && JSON.parse(p.event.description).planning===2).at(-1));assert.equal(last.event.rrule,'FREQ=WEEKLY;BYDAY=MO,WE');assert.equal(JSON.parse(last.event.description).end_actions[0].op,'off');assert.equal(await page.evaluate(()=>window.testPlanning.apiWrites.length),1);
+  await startForm('Autre horaire habituel','2026-11-10');await card.locator('[name=repeat]').selectOption('weekly');await card.locator('[name=start_hour]').selectOption('14');await card.locator('[data-target]').selectOption('entity_switch_heat');await save();assert.equal(await page.evaluate(()=>window.testPlanning.rows.filter(r=>r.rrule).map(r=>r.uid).filter((v,i,a)=>a.indexOf(v)===i).length),2);
+  const before=await page.evaluate(()=>window.testPlanning.rows.filter(r=>r.summary==='Chauffe habituelle'));
+  const source=card.locator('[data-drop="2026-11-09"] .event').filter({hasText:'Chauffe habituelle'}),destination=card.locator('[data-drop="2026-11-12"]');await source.dragTo(destination,{targetPosition:{x:70,y:45}});await page.waitForFunction(()=>!window.testPlanning.card._busy);
+  last=await page.evaluate(()=>window.testPlanning.ws.at(-1));assert.equal(last.type,'calendar/event/update');assert.equal(last.recurrence_id,'20261109T060000');assert.equal(last.event.rrule,undefined);assert.equal(last.recurrence_range,undefined);
+  let after=await page.evaluate(()=>window.testPlanning.rows.filter(r=>r.summary==='Chauffe habituelle'));assert.equal(after.length,before.length);assert.equal(after.find(r=>r.recurrence_id==='20261109T060000').start,'2026-11-12T05:00:00.000Z');assert.deepEqual(after.filter(r=>r.recurrence_id!=='20261109T060000'),before.filter(r=>r.recurrence_id!=='20261109T060000'));
+  await card.locator('[data-drop="2026-11-12"] .event').filter({hasText:'Chauffe habituelle'}).click();await button('Supprimer ce jour').click();await button('Confirmer la suppression').click();await page.waitForFunction(()=>!window.testPlanning.card._busy);assert.equal((await page.evaluate(()=>window.testPlanning.ws.at(-1))).recurrence_id,'20261109T060000');assert.equal(await page.evaluate(()=>window.testPlanning.rows.filter(r=>r.summary==='Chauffe habituelle').length),before.length-1);
+  await button('Semaine').click();await page.evaluate(()=>{const c=window.testPlanning.card;c._selected='2026-11-16';c._render();});
+  const weekSource=card.locator('[data-drop="2026-11-16"] .event').filter({hasText:'Chauffe habituelle'});await weekSource.dragTo(card.locator('[data-drop="2026-11-17"]'),{targetPosition:{x:50,y:320}});await page.waitForFunction(()=>!window.testPlanning.card._busy);last=await page.evaluate(()=>window.testPlanning.ws.at(-1));assert.equal(last.recurrence_id,'20261116T060000');assert.equal(last.event.dtstart,'2026-11-17T05:40:00.000Z');assert.equal(last.event.dtend,'2026-11-17T17:40:00.000Z');
+  await button('Mois').click();await startForm('Barrière ouverture et fermeture','2026-11-13');await card.locator('[data-target]').selectOption('entity:cover.gate');await card.locator('[name=has_end]').check();assert.equal(await card.locator('[data-phase=end_actions] [data-operation]').inputValue(),'close');await save();
+  await page.evaluate(()=>window.testPlanning.loseNextReply());await startForm('Réponse perdue','2026-11-14');await card.locator('[data-target]').selectOption('entity_switch_heat');await save();assert.equal(await page.evaluate(()=>window.testPlanning.rows.filter(r=>r.summary==='Réponse perdue').length),1);
+  await startForm('Réseau interrompu','2026-11-15');await card.locator('[data-target]').selectOption('entity_switch_heat');await page.evaluate(()=>window.testPlanning.loseNextReplyAndRead());await button('Enregistrer').click();await page.waitForFunction(()=>!window.testPlanning.card._busy);assert.match(await card.locator('[role=alert]').innerText(),/Lecture refusée/);await page.evaluate(()=>window.testPlanning.failReads(false));await save();assert.equal(await page.evaluate(()=>window.testPlanning.rows.filter(r=>r.summary==='Réseau interrompu').length),1);
+  await card.locator('[data-drop="2026-11-14"] .event').click();await card.locator('[name=start_hour]').selectOption('08');await page.evaluate(()=>{window.testPlanning.rows.find(r=>r.summary==='Réponse perdue').summary='Modification concurrente';});const writes=await page.evaluate(()=>window.testPlanning.ws.length);await button('Enregistrer').click();await page.waitForFunction(()=>!window.testPlanning.card._busy);assert.match(await card.locator('[role=alert]').innerText(),/changé/);assert.equal(await page.evaluate(()=>window.testPlanning.ws.length),writes);await button('Annuler').click();
+  await page.setViewportSize({width:390,height:900});assert.equal(await card.evaluate(el=>el.shadowRoot.querySelector('main').scrollWidth<=el.clientWidth),true);
+  await mkdir(new URL('test-results/',root),{recursive:true});await page.screenshot({path:fileURLToPath(new URL('test-results/planning-mobile.png',root)),fullPage:true});
+  await page.setViewportSize({width:1200,height:1050});await page.screenshot({path:fileURLToPath(new URL('test-results/planning-calendar.png',root)),fullPage:true});
+  await mount({admin:false});await startForm('Utilisateur classique');assert.equal(await card.locator('[data-target] option[value^="entity:"]').count(),0);await card.locator('[data-target]').selectOption('frech_1');await save();assert.equal(await page.evaluate(()=>window.testPlanning.apiWrites.length),0);
+  await mount({demo:true});await startForm('Simulation locale');await card.locator('[data-target]').selectOption('frech_1');await save();assert.equal(await page.evaluate(()=>window.testPlanning.ws.length),0);assert.equal(await page.evaluate(()=>window.testPlanning.apiWrites.length),0);
+  const editorChecks=await page.evaluate(()=>{const editor=document.createElement('ha-planning-card-editor');editor.setConfig({calendar:'calendar.test',groups:[{}],closure_calendar:'calendar.old'});editor.hass=window.testPlanning.hass;document.body.append(editor);return {text:editor.shadowRoot.textContent,config:editor._config};});assert.equal('groups' in editorChecks.config,false);assert.equal('closure_calendar' in editorChecks.config,false);assert.equal(editorChecks.text.includes('Groupe'),false);
+  await mount();
+  await page.evaluate(async()=>{
+    const t=window.testPlanning,meta={planning:2,kind:'schedule',id:'running-series',has_end:true,start_actions:[{target:'frech_1',op:'start'}],end_actions:[{target:'frech_1',op:'off'}]};
+    for(const [date,rid] of [['2026-11-05','20261105T100000'],['2026-11-12','20261112T100000']])t.add({uid:'running',recurrence_id:rid,rrule:'FREQ=WEEKLY;BYDAY=TH',summary:'Créneau en cours',start:date+'T09:00:00Z',end:date+'T12:00:00Z',description:JSON.stringify(meta)});
+    await t.card._load();t.card._open(t.card._events.find(e=>e.recurrence_id==='20261112T100000'));t.card._draft.deleteScope='series';await t.card._delete();
+  });assert.match(await card.locator('[role=alert]').innerText(),/en cours/);assert.equal(await page.evaluate(()=>window.testPlanning.ws.length),0);await button('Annuler').click();
+  await page.evaluate(async()=>{const c=window.testPlanning.card,e=c._events.find(e=>e.recurrence_id==='20261112T100000');await c._move({...e,recurrence_id:undefined},'2026-11-20');});assert.match(await card.locator('[role=alert]').innerText(),/identifiant/);assert.equal(await page.evaluate(()=>window.testPlanning.ws.length),0);
+  await page.goto(new URL('local/planning-simple-preview.html',root).href);await page.waitForFunction(()=>document.querySelector('ha-planning-card')?._initialized);assert.equal(await card.locator('.event').count(),0);await startForm('Test aperçu hors connexion','2026-11-23');await card.locator('[data-target]').selectOption('frech_demo');await save();assert.equal(await card.locator('.event').count(),1);
+  await startForm('Chauffe — horaire habituel','2026-11-23');await card.locator('[name=repeat]').selectOption('weekly');await card.locator('[data-weekday="2"]').check();await card.locator('[data-weekday="3"]').check();await card.locator('[data-weekday="4"]').check();await card.locator('[data-weekday="5"]').check();await card.locator('[data-target]').selectOption('entity:switch.demo_chauffe');await card.locator('[name=has_end]').check();await card.locator('[name=end_hour]').selectOption('18');await card.locator('form').screenshot({path:fileURLToPath(new URL('test-results/planning-form.png',root))});
+  assert.deepEqual(errors,[]);console.log('Browser passed: point/start/end, multiple weekly schedules, native drag month/week, isolated deletion, lost reply, concurrency, mobile, ordinary user, local demo, simple editor.');
+}finally{await browser.close();}

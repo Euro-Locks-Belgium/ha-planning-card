@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0 — 2026-11-09
+
+- Formulaire centré sur le créneau : actions ponctuelles ou actions distinctes de début et de fin.
+- Sélection directe d’entités, autorisation initiale administrateur et réutilisation par les utilisateurs classiques.
+- Déplacement par glisser-déposer en mois/semaine, limité à une occurrence native avec `recurrence_id`.
+- Suppression d’un seul jour ; suppression de série distincte et confirmée.
+- Groupes et exclusions retirés de l’interface ; éditeur de carte simplifié et personnalisation conservée.
+- Plusieurs séries hebdomadaires et jours par série, couleurs par programmation, minutes par pas de 10.
+- Nouveau blueprint `planning-actions.yaml` : début/fin indépendants, test par défaut, catalogue protégé et relecture avant chaque commande.
+- Import des profils Frech/appareils existants ; conversion explicite d’une occurrence associée lors de son édition.
+- Conservation des actions de fin des créneaux en cours et refus des modifications concurrentes.
+- Vérification avec la bibliothèque réelle de Calendrier local, scénarios HA simulés et parcours navigateur.
+- 57 tests de logique, 65 scénarios de blueprint, 4 tests du calendrier natif et parcours navigateur réussis.
+- Préparation de l’exécution depuis la carte : import du blueprint de la release et mode test par défaut.
+- Publication GitHub/HACS sans modification automatique d’une instance Home Assistant.
+
 ## 0.5.0 — 2026-11-05
 
 - Onglet Appareils : ajout, modification, désactivation et suppression depuis la carte.

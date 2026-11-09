@@ -1,0 +1,194 @@
+blueprint:
+  name: Planning — actions au début et à la fin
+  description: >-
+    Un calendrier, des actions ponctuelles ou des créneaux. Les entités sont
+    autorisées par un administrateur depuis la carte et stockées ici. Un événement
+    ne contient que leurs identifiants et des opérations prédéfinies. Les scripts
+    Frech existants gardent leur contrôle d’entrée. Mode test par défaut.
+  domain: automation
+  author: Euro-Locks Belgium
+  source_url: https://github.com/Euro-Locks-Belgium/ha-planning-card/blob/main/blueprints/planning-actions.yaml
+  homeassistant:
+    min_version: "2026.10.0"
+  input:
+    planning_calendar:
+      name: Calendrier
+      selector:
+        entity:
+          filter:
+            domain: calendar
+    action_catalog:
+      name: Actions autorisées (gérées par la carte)
+      default: {}
+      selector:
+        object: {}
+    test_mode:
+      name: Mode test — notifications uniquement
+      default: true
+      selector:
+        boolean: {}
+
+# Independent runs let an end action execute while another Frech sequence waits.
+mode: parallel
+max: 50
+max_exceeded: warning
+variables:
+  planning_calendar: !input planning_calendar
+  action_catalog: !input action_catalog
+  test_mode: !input test_mode
+  allowed_ops:
+    switch: {'on': turn_on, 'off': turn_off}
+    light: {'on': turn_on, 'off': turn_off}
+    input_boolean: {'on': turn_on, 'off': turn_off}
+    cover: {open: open_cover, close: close_cover, stop: stop_cover}
+    scene: {run: turn_on}
+    script: {run: run}
+    button: {press: press}
+    input_button: {press: press}
+    frech: {start: start, 'off': turn_off}
+triggers:
+  - trigger: calendar
+    entity_id: !input planning_calendar
+    event: start
+    id: start
+  - trigger: calendar
+    entity_id: !input planning_calendar
+    event: end
+    id: end
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger is defined and trigger.platform == 'calendar'
+         and trigger.id in ['start','end']
+         and states(planning_calendar) in ['on','off']
+         and 0 <= as_timestamp(now()) - as_timestamp(trigger.calendar_event[trigger.id], 0) < 90 }}
+actions:
+  - variables:
+      event_meta: "{{ trigger.calendar_event.description | default('', true) | from_json({}) }}"
+      event_start: "{{ as_timestamp(trigger.calendar_event.start, 0) }}"
+      event_end: "{{ as_timestamp(trigger.calendar_event.end, 0) }}"
+      notification_id: "{{ 'planning_actions_' ~ (planning_calendar | replace('.', '_')) ~ '_' ~ event_start ~ '_' ~ trigger.id }}"
+  - condition: template
+    value_template: >-
+      {{ event_meta is mapping and event_meta.get('planning') == 2
+         and event_meta.get('kind') == 'schedule'
+         and event_meta.get('id') is string and event_meta.get('id') | length > 0
+         and event_meta.get('has_end') is boolean
+         and event_end | float > event_start | float
+         and (trigger.id == 'start' or event_meta.has_end) }}
+  - variables:
+      selection_valid: >-
+        {%- set ns = namespace(valid=action_catalog is mapping) -%}
+        {%- for phase in ['start_actions','end_actions'] -%}
+          {%- set items = event_meta.get(phase) -%}
+          {%- if items is not sequence or items is string or items is mapping -%}
+            {%- set ns.valid = false -%}
+          {%- elif items | count > 50 or (phase == 'start_actions' and items | count == 0)
+               or (phase == 'end_actions' and event_meta.has_end != (items | count > 0)) -%}
+            {%- set ns.valid = false -%}
+          {%- else -%}
+            {%- set seen = namespace(ids=[]) -%}
+            {%- for item in items -%}
+              {%- if item is not mapping or item.get('target') is not string
+                    or item.get('op') is not string or action_catalog is not mapping
+                    or item.get('target') not in action_catalog -%}
+                {%- set ns.valid = false -%}
+              {%- else -%}
+                {%- set m = action_catalog[item.target] -%}
+                {%- if item.target in seen.ids -%}{%- set ns.valid = false -%}{%- endif -%}
+                {%- set seen.ids = seen.ids + [item.target] -%}
+                {%- if m is not mapping or m.get('enabled', true) is not true
+                      or m.get('type') not in allowed_ops or item.op not in allowed_ops.get(m.get('type'), {}) -%}
+                  {%- set ns.valid = false -%}
+                {%- elif m.type == 'frech' -%}
+                  {%- if not (m.get('switch_entity', '') is match('^switch[.][a-z0-9_]+$'))
+                       or not (m.get('script_entity', '') is match('^script[.][a-z0-9_]+$'))
+                       or not (m.get('input_entity', '') is match('^binary_sensor[.][a-z0-9_]+$'))
+                       or m.get('frech_number') is not integer or not 1 <= m.frech_number <= 21 -%}
+                    {%- set ns.valid = false -%}
+                  {%- endif -%}
+                {%- elif not (m.get('entity_id', '') is match('^' ~ m.type ~ '[.][a-z0-9_]+$')) -%}
+                  {%- set ns.valid = false -%}
+                {%- endif -%}
+              {%- endif -%}
+            {%- endfor -%}
+          {%- endif -%}
+        {%- endfor -%}
+        {{- ns.valid -}}
+  - condition: template
+    value_template: "{{ selection_valid }}"
+  - variables:
+      requested_actions: "{{ event_meta.start_actions if trigger.id == 'start' else event_meta.end_actions }}"
+  - repeat:
+      for_each: "{{ requested_actions }}"
+      sequence:
+        # A calendar trigger may have been cached before an occurrence was moved/deleted.
+        - action: calendar.get_events
+          target:
+            entity_id: !input planning_calendar
+          data:
+            start_date_time: "{{ trigger.calendar_event.start }}"
+            end_date_time: "{{ (as_datetime(trigger.calendar_event.end) + timedelta(seconds=1)).isoformat() }}"
+          response_variable: current_response
+        - variables:
+            event_present: >-
+              {%- set ns = namespace(found=false) -%}
+              {%- if current_response is mapping and planning_calendar in current_response
+                    and current_response[planning_calendar] is mapping -%}
+                {%- set rows = current_response[planning_calendar].get('events') -%}
+                {%- if rows is sequence and rows is not string and rows is not mapping -%}
+                  {%- for row in rows -%}
+                    {%- if row.description | default('', true) | from_json({}) == event_meta
+                          and as_timestamp(row.start, 0) == event_start | float
+                          and as_timestamp(row.end, 0) == event_end | float -%}
+                      {%- set ns.found = true -%}
+                    {%- endif -%}
+                  {%- endfor -%}
+                {%- endif -%}
+              {%- endif -%}
+              {{- ns.found and states(planning_calendar) in ['on','off']
+                  and (trigger.id == 'end' or not event_meta.has_end or as_timestamp(now()) < event_end | float) -}}
+            machine: "{{ action_catalog[repeat.item.target] }}"
+            operation: "{{ repeat.item.op }}"
+        - condition: template
+          value_template: "{{ event_present }}"
+        - if: "{{ test_mode }}"
+          then:
+            - action: persistent_notification.create
+              data:
+                notification_id: "{{ notification_id ~ '_' ~ repeat.index }}"
+                title: "TEST Planning — {{ 'début' if trigger.id == 'start' else 'fin' }}"
+                message: "{{ machine.get('name', repeat.item.target) }} : {{ operation }}. Aucune commande envoyée."
+          else:
+            - condition: template
+              value_template: >-
+                {{ (machine.type == 'frech' and states(machine.switch_entity) in ['on','off']
+                      and (operation == 'off' or (states(machine.script_entity) == 'off'
+                           and states(machine.input_entity) in ['on','off'])))
+                   or (machine.type != 'frech' and states(machine.entity_id) not in ['unknown','unavailable']
+                       and (machine.type != 'script' or states(machine.entity_id) == 'off')) }}
+            - choose:
+                - conditions: "{{ machine.type == 'frech' and operation == 'start' }}"
+                  sequence:
+                    - action: "{{ machine.script_entity }}"
+                      data:
+                        switch_entity: "{{ machine.switch_entity }}"
+                        input_entity: "{{ machine.input_entity }}"
+                        frech_number: "{{ machine.frech_number }}"
+                        wait_time: 10
+                    - if: "{{ not repeat.last }}"
+                      then:
+                        - delay:
+                            seconds: 60
+                - conditions: "{{ machine.type == 'frech' and operation == 'off' }}"
+                  sequence:
+                    - action: switch.turn_off
+                      target:
+                        entity_id: "{{ machine.switch_entity }}"
+                - conditions: "{{ machine.type == 'script' }}"
+                  sequence:
+                    - action: "{{ machine.entity_id }}"
+              default:
+                - action: "{{ machine.type ~ '.' ~ allowed_ops[machine.type][operation] }}"
+                  target:
+                    entity_id: "{{ machine.entity_id }}"

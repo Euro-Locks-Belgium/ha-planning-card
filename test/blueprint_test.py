@@ -97,6 +97,8 @@ class Runner:
                     if all(self.condition(c) for c in (conditions if isinstance(conditions, list) else [conditions])):
                         self.sequence(option['sequence'])
                         break
+                else:
+                    self.sequence(step.get('default', []))
             elif 'stop' in step:
                 raise StopRun()
             elif 'wait_template' in step:

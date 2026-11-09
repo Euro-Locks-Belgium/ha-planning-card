@@ -1,0 +1,12 @@
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {fileURLToPath} from 'node:url';
+const root=new URL('../',import.meta.url);
+const bundle=await readFile(new URL('dist/ha-planning-card.js',root),'utf8');
+const html=`<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planning — aperçu local</title><style>body{margin:0;padding:22px;background:#11171d;color:#e5edf4;font:15px Arial,sans-serif;--primary-text-color:#e5edf4;--secondary-text-color:#aab8c4;--card-background-color:#1d252d;--secondary-background-color:#27323d;--divider-color:#3a4651;--primary-color:#38bce0}body>header,ha-planning-card{display:block;max-width:1220px;margin:0 auto 18px}body>header p{color:#aab8c4;line-height:1.5}h1{font-size:22px}@media(max-width:600px){body{padding:8px}}</style><header><h1>Planning · aperçu local</h1><p>Ajoutez vos programmations pour essayer les déplacements, les répétitions et les actions de début/fin. Les appareils proposés sont fictifs. Aucune connexion à Home Assistant ; rechargez la page pour repartir d’un planning vide.</p></header><ha-planning-card></ha-planning-card><script>${bundle.replaceAll('</script','<\\/script')}</script><script>
+const states={};
+for(const [entity_id,name] of Object.entries({'switch.demo_chauffe':'Chauffe · démonstration','switch.demo_barriere':'Barrière secondaire · démonstration','cover.demo_barriere':'Barrière principale · démonstration','script.demo_frech':'Démarrage Frech · démonstration','switch.demo_frech':'Frech · démonstration','binary_sensor.demo_frech':'Retour Frech · démonstration'}))states[entity_id]={entity_id,state:'off',attributes:{friendly_name:name}};
+const card=document.querySelector('ha-planning-card');card.setConfig({type:'custom:ha-planning-card',title:'Planning',demo:true});card.hass={config:{time_zone:'Europe/Brussels'},user:{is_admin:true},states,callApi(){throw new Error('Aucune API dans cet aperçu local.');},callWS(){throw new Error('Aucune commande dans cet aperçu local.');}};
+card._snapshot={ready:true,test_mode:true,records:[{id:'frech_demo',name:'Frech · démarrage contrôlé (démo)',type:'frech',enabled:true,switch_entity:'switch.demo_frech',script_entity:'script.demo_frech',input_entity:'binary_sensor.demo_frech',frech_number:1}]};card._render();
+</script></html>`;
+await mkdir(new URL('local/',root),{recursive:true});
+const output=new URL('local/planning-simple-preview.html',root);await writeFile(output,html);console.log(fileURLToPath(output));
