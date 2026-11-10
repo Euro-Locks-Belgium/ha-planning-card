@@ -3,7 +3,7 @@
 Une carte de calendrier pour choisir **quand** et **quoi faire** : démarrer des
 Frech, ouvrir une barrière, allumer une chauffe puis l’éteindre.
 
-**Version 0.10.0** : événements compacts, configuration en onglets et menus stables.
+**Version 0.10.1** : actions toujours visibles en bas du formulaire et suppressions côte à côte.
 Les jours déplacés et supprimés
 sont conservés directement par la carte, avec un [journal partagé dans le calendrier](docs/planning-series.md).
 Aucun complément à installer. Un import ICS unique permet de reprendre les exceptions
@@ -61,11 +61,13 @@ Glisser une programmation vers une date en vue **Mois** conserve son heure et sa
 durée. En vue **Semaine**, la position verticale choisit l’heure par pas de 10 minutes.
 Le déplacement modifie **uniquement cette occurrence**, même dans une série.
 Cliquer puis modifier la date/l’heure permet la même opération au clavier ou sur mobile.
-Le formulaire s’ouvre au centre de l’écran, avec son propre défilement. Sur un écran
-tactile, glisser la poignée **⠿** de l’événement ; toucher son libellé ouvre la modification.
+Le formulaire s’ouvre au centre de l’écran, avec son propre défilement. Ses actions
+restent visibles en bas pendant le défilement : **Annuler**, **Enregistrer** et les
+boutons de suppression. Sur un écran tactile, glisser la poignée **⠿** de l’événement ;
+toucher son libellé ouvre la modification.
 
 Cliquer sur une programmation puis **Supprimer ce jour** retire une seule occurrence.
-**Toute la série → Supprimer toute la série** est une action distincte avec confirmation.
+**Supprimer toute la série** est placé juste à côté, avec une confirmation distincte.
 
 Les anciens événements et ceux créés directement dans le calendrier peuvent changer
 de date, d’heure, de nom ou de note sans changer leurs actions existantes. Leur durée
@@ -83,7 +85,7 @@ peuvent pas être déplacés ou supprimés, afin de conserver leur extinction/fe
 
 Pour la version publiée : HACS → Dépôts personnalisés →
 `https://github.com/Euro-Locks-Belgium/ha-planning-card`, catégorie Dashboard.
-Mettre à jour **Planning** vers **v0.10.0**, puis recharger complètement le navigateur
+Mettre à jour **Planning** vers **v0.10.1**, puis recharger complètement le navigateur
 ou l’application Home Assistant.
 La ressource est `/hacsfiles/ha-planning-card/ha-planning-card.js`, type Module JavaScript.
 Le type historique `custom:ha-planning-chauffe-card` reste disponible.

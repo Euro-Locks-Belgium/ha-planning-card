@@ -75,7 +75,7 @@ export const PlanningInteractions={
     else if(active?.dataset.deviceField)selector=`[data-device-field="${CSS.escape(active.dataset.deviceField)}"]`;
     else if(active?.closest('.action-row')){const row=active.closest('.action-row');selector=`[data-phase="${row.dataset.phase}"][data-index="${row.dataset.index}"] [${active.hasAttribute('data-target')?'data-target':'data-operation'}]`;}
     else if(active?.dataset.action)selector=`[data-action="${CSS.escape(active.dataset.action)}"]`;
-    return {scroll:dialog.scrollTop,selector,start:active?.selectionStart,end:active?.selectionEnd};
+    return {scroll:(dialog.querySelector('.schedule-body') || dialog).scrollTop,selector,start:active?.selectionStart,end:active?.selectionEnd};
   },
   _restoreDialog(state){
     const dialog=this.shadowRoot.querySelector('dialog');
@@ -84,7 +84,7 @@ export const PlanningInteractions={
       const focus=state?.selector?dialog.querySelector(state.selector):null;
       (focus || dialog.querySelector('h2'))?.focus({preventScroll:true});
       if(focus && typeof state.start==='number' && ['INPUT','TEXTAREA'].includes(focus.tagName)){try{focus.setSelectionRange(state.start,state.end);}catch{/* Select/date/color inputs have no text selection. */}}
-      dialog.scrollTop=state?.scroll || 0;
+      (dialog.querySelector('.schedule-body') || dialog).scrollTop=state?.scroll || 0;
     }
     if(!dialog && state)this.shadowRoot.querySelector('[data-action=new]')?.focus({preventScroll:true});
     this._showToast();
@@ -97,4 +97,17 @@ export const PlanningInteractions={
   },
 };
 export const INTERACTION_STYLE=`
-dialog.planning-dialog{position:fixed;inset:0;margin:auto;width:min(760px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px);overflow:auto;padding:0;background:var(--ha-card-background,var(--card-background-color,#202226));color:var(--primary-text-color,#e7eaef);border:1px solid var(--divider-color,#41474e);border-radius:16px;box-shadow:0 24px 90px #0008;overscroll-behavior:contain;--accent:var(--primary-color,#31b8de)}dialog.planning-dialog::backdrop{background:#0009}dialog .dialog-body{padding:20px}dialog form,dialog .panel{margin:0;border:0;padding:0}dialog h2{outline:none}dialog .toolbar:first-child{position:sticky;top:-20px;background:var(--card-background-color,#202226);padding:12px 0;z-index:2}dialog .error{white-space:normal}.event{position:relative;padding-right:23px}.event-handle{position:absolute;right:1px;top:0;bottom:0;width:22px;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:inherit;touch-action:none;cursor:grab;user-select:none}.event-handle:hover{background:#ffffff35}.drag-source{opacity:.4}.planning-toast{position:fixed;inset:16px auto auto 50%;transform:translateX(-50%);margin:0;width:max-content;max-width:calc(100vw - 32px);padding:12px 40px 12px 15px;z-index:2147483647;border:1px solid var(--divider-color,#526271);border-radius:10px;background:var(--card-background-color,#202b36);color:var(--primary-text-color,#fff);box-shadow:0 5px 30px #0006;font-size:14px}.planning-toast.error{border-color:#e48a8a}.planning-toast button{position:absolute;right:5px;top:4px;border:0;padding:4px 7px}.planning-toast::backdrop{background:transparent}.event-main{display:block;width:100%;padding:0;border:0;text-align:left;background:transparent!important;color:inherit;font:inherit;cursor:pointer;overflow:hidden}.event[draggable=true]{user-select:none}@media(max-width:600px){dialog.planning-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);border-radius:12px}dialog .dialog-body{padding:14px}.event-handle{width:21px}.event{padding-right:21px}dialog .toolbar:first-child{top:-14px}}`;
+dialog.planning-dialog{position:fixed;inset:0;margin:auto;width:min(760px,calc(100vw - 32px));max-width:none;max-height:calc(100dvh - 32px);overflow:auto;padding:0;background:var(--ha-card-background,var(--card-background-color,#202226));color:var(--primary-text-color,#e7eaef);border:1px solid var(--divider-color,#41474e);border-radius:16px;box-shadow:0 24px 90px #0008;overscroll-behavior:contain;--accent:var(--primary-color,#31b8de)}dialog.planning-dialog::backdrop{background:#0009}dialog .dialog-body{padding:20px}dialog form,dialog .panel{margin:0;border:0;padding:0}dialog h2{outline:none}dialog .toolbar:first-child{position:sticky;top:-20px;background:var(--card-background-color,#202226);padding:12px 0;z-index:2}dialog .error{white-space:normal}.event{position:relative;padding-right:23px}.event-handle{position:absolute;right:1px;top:0;bottom:0;width:22px;min-height:0;padding:0;display:flex;align-items:center;justify-content:center;border:0;border-radius:4px;background:transparent;color:inherit;touch-action:none;cursor:grab;user-select:none}.event-handle:hover{background:#ffffff35}.drag-source{opacity:.4}.planning-toast{position:fixed;inset:16px auto auto 50%;transform:translateX(-50%);margin:0;width:max-content;max-width:calc(100vw - 32px);padding:12px 40px 12px 15px;z-index:2147483647;border:1px solid var(--divider-color,#526271);border-radius:10px;background:var(--card-background-color,#202b36);color:var(--primary-text-color,#fff);box-shadow:0 5px 30px #0006;font-size:14px}.planning-toast.error{border-color:#e48a8a}.planning-toast button{position:absolute;right:5px;top:4px;border:0;padding:4px 7px}.planning-toast::backdrop{background:transparent}.event-main{display:block;width:100%;padding:0;border:0;text-align:left;background:transparent!important;color:inherit;font:inherit;cursor:pointer;overflow:hidden}.event[draggable=true]{user-select:none}@media(max-width:600px){dialog.planning-dialog{width:calc(100vw - 16px);max-height:calc(100dvh - 16px);border-radius:12px}dialog .dialog-body{padding:14px}.event-handle{width:21px}.event{padding-right:21px}dialog .toolbar:first-child{top:-14px}}
+dialog.planning-dialog.schedule-dialog{overflow:hidden}
+.schedule-dialog .dialog-body{padding:0}
+.schedule-dialog .schedule-form{display:flex;flex-direction:column;max-height:calc(100dvh - 34px)}
+.schedule-body{padding:20px;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding-block:64px 16px}
+.schedule-footer{flex:none;padding:12px 20px;border-top:1px solid var(--divider-color,#41474e);background:var(--ha-card-background,var(--card-background-color,#202226))}
+.schedule-footer-actions,.schedule-delete-actions,.schedule-save-actions{display:flex;align-items:stretch;gap:8px;min-width:0}
+.schedule-footer-actions{justify-content:space-between;flex-wrap:wrap;gap:12px}
+.schedule-save-actions{margin-left:auto}
+.schedule-footer button{min-height:44px;min-width:0}
+.schedule-delete-confirmation{margin:0 0 12px}
+.schedule-delete-confirmation p{margin:0 0 8px}
+@media(max-width:600px){.schedule-dialog .schedule-form{max-height:calc(100dvh - 18px)}.schedule-body{padding:14px}.schedule-footer{padding:12px 14px}.schedule-delete-actions{flex:1 1 100%}.schedule-delete-actions button{flex:1;padding:8px;font-size:13px}.schedule-save-actions{width:100%;justify-content:flex-end}.schedule-save-actions button{flex:1}.schedule-delete-confirmation .buttons{gap:8px}.schedule-delete-confirmation button{flex:1}}
+`;

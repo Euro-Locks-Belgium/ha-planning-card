@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.1 — 2026-11-10
+
+- Actions du formulaire de programmation regroupées dans un pied de fenêtre toujours visible pendant le défilement.
+- Suppression de toute la série directement à côté de « Supprimer ce jour », avec confirmation dans le même pied de fenêtre.
+- Même disposition pour les anciennes programmations et les événements natifs, adaptée aux petits écrans et aux quatre langues.
+
 ## 0.10.0 — 2026-11-10
 
 - Événements plus compacts : heure et nom sur la même ligne, nom complet et plage horaire accessibles au survol.
