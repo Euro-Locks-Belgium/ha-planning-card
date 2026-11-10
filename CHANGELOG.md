@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.2 — 2026-11-10
+
+- Actions directement accessibles sous l’heure dans les anciennes programmations, sans menu « Actions et appareils » ni étape de configuration.
+- Sans action, affichage du bouton d’ajout seul, avec 12 px d’espace sous l’heure ; même disposition au début et à la fin.
+- Les modifications d’horaire seules conservent le format des anciennes programmations ; l’ajout ou la modification d’actions utilise automatiquement le format Planning.
+
 ## 0.10.1 — 2026-11-10
 
 - Actions du formulaire de programmation regroupées dans un pied de fenêtre toujours visible pendant le défilement.

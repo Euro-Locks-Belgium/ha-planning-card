@@ -12,7 +12,7 @@ await page.clock.install({time:new Date('2026-11-05T10:00:00Z')});
 await page.route('https://planning.test/**',route=>route.fulfill({contentType:'text/html',body:'<style>body{margin:0;background:#11151a;--primary-text-color:#e5edf3;--secondary-text-color:#a7b4c0;--card-background-color:#20252b;--divider-color:#3c454f;--primary-color:#35bedf}ha-planning-card{display:block;max-width:1200px;margin:auto}</style><ha-planning-card></ha-planning-card>'}));
 const card=page.locator('ha-planning-card'),button=name=>card.getByRole('button',{name,exact:true});
 async function mount(options={}){await page.goto('https://planning.test');await page.addScriptTag({content:bundle});await page.addScriptTag({content:fixture});await page.evaluate(o=>window.setupPlanningTest(o),options);await page.waitForFunction(()=>window.testPlanning.card._loaded);}
-async function startForm(name,date='2026-11-09'){await button('+ Programmation').click();await card.locator('[name=summary]').fill(name);await card.locator('[name=date]').fill(date);}
+async function startForm(name,date='2026-11-09'){await button('+ Programmation').click();await button('+ Ajouter une action').click();await card.locator('[name=summary]').fill(name);await card.locator('[name=date]').fill(date);}
 async function save(){await button('Enregistrer').click();await page.waitForFunction(()=>!document.querySelector('ha-planning-card')._busy);assert.equal(await card.locator('[role=alert]').count(),0,await card.locator('[role=alert]').allTextContents());assert.equal(await card.locator('form').count(),0);}
 try{
   await mount();assert.equal(await card.locator('.event').count(),0);assert.equal(await card.getByText('Ajouter une exclusion',{exact:true}).count(),0);

@@ -13,4 +13,6 @@ export const PLANNING_STYLE=CALENDAR_STYLE+`
 .event .event-line strong{display:block;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-line-clamp:unset}
 .event .event-devices{display:block;line-height:1.2;font-size:.9em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
 .week-day .event{padding-top:3px;padding-bottom:3px}
+.schedule-action-section .action-list{margin-top:12px}
+.schedule-action-section .action-row:first-child{margin-top:0}
 `;

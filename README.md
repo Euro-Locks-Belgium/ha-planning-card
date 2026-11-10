@@ -3,7 +3,7 @@
 Une carte de calendrier pour choisir **quand** et **quoi faire** : démarrer des
 Frech, ouvrir une barrière, allumer une chauffe puis l’éteindre.
 
-**Version 0.10.1** : actions toujours visibles en bas du formulaire et suppressions côte à côte.
+**Version 0.10.2** : actions directement sous l’heure, sans menu de configuration intermédiaire.
 Les jours déplacés et supprimés
 sont conservés directement par la carte, avec un [journal partagé dans le calendrier](docs/planning-series.md).
 Aucun complément à installer. Un import ICS unique permet de reprendre les exceptions
@@ -71,8 +71,9 @@ Cliquer sur une programmation puis **Supprimer ce jour** retire une seule occurr
 
 Les anciens événements et ceux créés directement dans le calendrier peuvent changer
 de date, d’heure, de nom ou de note sans changer leurs actions existantes. Leur durée
-est conservée. Le formulaire **Actions et appareils → Configurer les actions** permet
-de leur associer explicitement les nouvelles actions Planning. Un événement sans
+est conservée. Les actions sont visibles directement sous l’heure : **Ajouter une
+action** permet de leur associer les nouvelles actions Planning. Sans action, seul
+ce bouton est affiché, avec un espace sous l’heure. Un événement sans
 identifiant modifiable reste en lecture seule.
 
 Le calendrier doit fournir `uid` et `recurrence_id` pour modifier une occurrence.
@@ -85,7 +86,7 @@ peuvent pas être déplacés ou supprimés, afin de conserver leur extinction/fe
 
 Pour la version publiée : HACS → Dépôts personnalisés →
 `https://github.com/Euro-Locks-Belgium/ha-planning-card`, catégorie Dashboard.
-Mettre à jour **Planning** vers **v0.10.1**, puis recharger complètement le navigateur
+Mettre à jour **Planning** vers **v0.10.2**, puis recharger complètement le navigateur
 ou l’application Home Assistant.
 La ressource est `/hacsfiles/ha-planning-card/ha-planning-card.js`, type Module JavaScript.
 Le type historique `custom:ha-planning-chauffe-card` reste disponible.
@@ -164,9 +165,10 @@ existante pour que la préparation retrouve son catalogue Frech/appareils.
 Les profils de `planning-devices.yaml` et `planning-frech.yaml` sont repris avec
 leurs identifiants, relais, retours, numéros et scripts. Les anciennes programmations
 peuvent être déplacées ou modifiées pour leur horaire en conservant leur format
-et leurs associations. Pour changer leurs actions, ouvrir **Configurer les actions**
-et choisir les appareils : seule l’occurrence sélectionnée passe au nouveau format.
-Les autres occurrences restent gérées par l’ancienne automatisation.
+et leurs associations. Les appareils et les actions se choisissent directement sous
+l’heure. Une modification d’actions utilise le format Planning pour la portée choisie
+(**Ce jour uniquement** ou **Toute la série**). Avec **Ce jour uniquement**, les autres
+occurrences restent gérées par l’ancienne automatisation.
 Une ancienne carte utilisant plusieurs calendriers doit être
 reconfigurée avec un calendrier unique ; ses autres calendriers restent intacts.
 
