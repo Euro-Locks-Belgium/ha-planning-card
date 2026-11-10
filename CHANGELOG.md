@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.0 — 2026-11-10
+
+- Événements plus compacts : heure et nom sur la même ligne, nom complet et plage horaire accessibles au survol.
+- Éditeur organisé en onglets Général, Appareils, Affichage et Avancé, avec navigation au clavier et traductions FR/EN/NL/IT.
+- Champs et menus natifs conservés pendant les mises à jour Home Assistant et les retours de configuration ; les nouvelles options sont différées pendant une sélection.
+- Onglet actif, recherche d’appareils, position de défilement, texte saisi et curseur conservés.
+- Poignée de déplacement adaptée aux lignes compactes et sélecteur de couleur visible dans l’éditeur.
+
 ## 0.9.1 — 2026-11-10
 
 - Journées passées plus sombres en Mois, Semaine et Agenda, selon la date du fuseau Home Assistant.

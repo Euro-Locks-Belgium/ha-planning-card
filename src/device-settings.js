@@ -42,7 +42,7 @@ export const PlanningDeviceSettings={
       if(old && stableJson({...old,name:''})!==stableJson({...record,name:''})){const today=dayOf(Date.now(),this._zone),events=this._config.demo?this._events:await this._fetch(shiftDay(today,-1),shiftDay(today,2));for(const event of events){if([...event.meta?.start_actions || [],...event.meta?.end_actions || []].some(a=>a.target===id)){const active=mutationIssue(event,'occurrence',events);if(active)throw new Error(active);}}}
       if(this._config.demo){const records=this._snapshot.records.filter(r=>r.id!==id);records.push(record);this._snapshot={...this._snapshot,records};}
       else{if(!this._snapshot.ready){this._snapshot=await this._store.setup(ACTION_BLUEPRINT_VERSION,this._config.execution_automation);this._deviceSnapshot=this._snapshot;}const records=this._deviceSnapshot.records.filter(r=>r.id!==id);records.push(record);this._snapshot=await this._store.save(this._deviceSnapshot,records);}
-      this._deviceDraft=null;this._settings=true;this._notice='Appareil enregistré.';if(this._config.entities?.length && !this._config.entities.includes(entity))this._notice+=' Pour le proposer sur cette carte, cochez-le dans Modifier la carte → Appareils proposés dans les programmations.';else this._notice+=' Il est disponible dans les programmations.';
+      this._deviceDraft=null;this._settings=true;this._notice='Appareil enregistré.';if(this._config.entities?.length && !this._config.entities.includes(entity))this._notice+=' Pour le proposer sur cette carte, cochez-le dans Modifier la carte → Appareils.';else this._notice+=' Il est disponible dans les programmations.';
     }catch(e){this._error=e.message;}finally{this._busy=false;this._render();}
   },
 };

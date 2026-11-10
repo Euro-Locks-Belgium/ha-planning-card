@@ -3,10 +3,14 @@
 Une carte de calendrier pour choisir **quand** et **quoi faire** : démarrer des
 Frech, ouvrir une barrière, allumer une chauffe puis l’éteindre.
 
-**Version 0.9.1** : les jours déplacés et supprimés
+**Version 0.10.0** : événements compacts, configuration en onglets et menus stables.
+Les jours déplacés et supprimés
 sont conservés directement par la carte, avec un [journal partagé dans le calendrier](docs/planning-series.md).
 Aucun complément à installer. Un import ICS unique permet de reprendre les exceptions
 des anciennes séries ; les nouvelles sont suivies automatiquement.
+
+L’heure et le nom des événements partagent une ligne. La configuration garde les
+champs et menus en place pendant les mises à jour Home Assistant.
 
 Fenêtres centrées à l’écran, déplacement souris/tactile, actions ponctuelles ou créneaux avec début/fin,
 déplacement et suppression d’une seule occurrence. Le planning commence sans programmation.
@@ -79,7 +83,7 @@ peuvent pas être déplacés ou supprimés, afin de conserver leur extinction/fe
 
 Pour la version publiée : HACS → Dépôts personnalisés →
 `https://github.com/Euro-Locks-Belgium/ha-planning-card`, catégorie Dashboard.
-Mettre à jour **Planning** vers **v0.9.1**, puis recharger complètement le navigateur
+Mettre à jour **Planning** vers **v0.10.0**, puis recharger complètement le navigateur
 ou l’application Home Assistant.
 La ressource est `/hacsfiles/ha-planning-card/ha-planning-card.js`, type Module JavaScript.
 Le type historique `custom:ha-planning-chauffe-card` reste disponible.
@@ -126,7 +130,7 @@ identifiants et des opérations prédéfinies.
 
 ### Choisir et configurer les appareils
 
-- **Modifier la carte → Appareils proposés dans les programmations** : rechercher et
+- **Modifier la carte → Appareils** : rechercher et
   cocher les entités autorisées sur cette carte. **Sans sélection, aucun nouvel
   appareil n’est proposé.** Cette sélection ne donne pas de
   droits supplémentaires aux utilisateurs classiques.
@@ -138,7 +142,7 @@ identifiants et des opérations prédéfinies.
   Les entrées `binary_sensor` servent uniquement au contrôle ; elles ne deviennent
   jamais des actions de programmation. Les sélecteurs d’ajout proposent uniquement
   les entités cochées. Un ancien profil reste conservé lorsqu’il sort de la sélection.
-- **Modifier la carte → Exécution existante / migration** : choisir une ancienne
+- **Modifier la carte → Avancé → Exécution existante / migration** : choisir une ancienne
   automatisation Planning pour retrouver son catalogue et ses profils Frech.
 
 Les fenêtres s’ouvrent à l’écran et se ferment avec **Fermer**, **Annuler** ou Échap.
@@ -203,6 +207,15 @@ dans chaque programmation. Ces options sont inspirées de
 [Daylight Calendar Card](https://github.com/superdingo101/daylight-calendar-card) ;
 voir [les références](THIRD_PARTY_NOTICES.md).
 
+Depuis la **v0.10.0**, les sections repliables sont
+remplacées par les onglets **Général**, **Appareils**, **Affichage** et **Avancé**.
+La langue, le nom et le calendrier sont dans Général ; les autorisations d’entités
+dans Appareils ; la personnalisation dans Affichage ; la migration dans Avancé.
+Les mises à jour HA conservent les menus ouverts, l’onglet, la saisie et la recherche.
+Les listes réellement modifiées sont actualisées après la fin d’une sélection.
+Dans le calendrier, l’heure et le nom partagent une ligne ; le titre complet et
+les heures de début/fin restent dans l’infobulle et le formulaire de modification.
+
 Dans une vue **Sections**, Modifier la carte → **Disposition** règle la largeur et
 la hauteur. Élargir la section si nécessaire, ou utiliser une vue **Panneau** pour
 une carte sur toute la page. Sur mobile, la grille Semaine défile horizontalement.
@@ -247,6 +260,6 @@ et appliquent les messages réellement produits par le modèle JavaScript.
 Les autres tests simulent les services HA : ils ne pilotent aucun appareil.
 `node scripts/preview.mjs` crée `local/planning-simple-preview.html`, un aperçu
 autonome à ouvrir dans un navigateur, avec appareils fictifs et aucun appel réseau.
-Dans cet aperçu, ouvrir **Paramètres de la carte → Langue**, choisir la langue puis
+Dans cet aperçu, ouvrir **Paramètres de la carte → Général → Langue**, choisir la langue puis
 **Enregistrer**. Le même éditeur est utilisé que dans Home Assistant ; les
 programmations de la session locale sont conservées. Le choix Annuler ne modifie rien.

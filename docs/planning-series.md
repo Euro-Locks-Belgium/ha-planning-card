@@ -1,4 +1,4 @@
-# Conservation des exceptions — carte 0.9.1
+# Conservation des exceptions — carte 0.10.0
 
 Tout est géré par la carte JavaScript, dans le même Calendrier local. Aucun
 complément, nouvelle intégration ou conteneur n’est nécessaire. Le blueprint
