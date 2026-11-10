@@ -3,7 +3,7 @@
 Une carte de calendrier pour choisir **quand** et **quoi faire** : démarrer des
 Frech, ouvrir une barrière, allumer une chauffe puis l’éteindre.
 
-**Version 0.9.0** : les jours déplacés et supprimés
+**Version 0.9.1** : les jours déplacés et supprimés
 sont conservés directement par la carte, avec un [journal partagé dans le calendrier](docs/planning-series.md).
 Aucun complément à installer. Un import ICS unique permet de reprendre les exceptions
 des anciennes séries ; les nouvelles sont suivies automatiquement.
@@ -79,7 +79,7 @@ peuvent pas être déplacés ou supprimés, afin de conserver leur extinction/fe
 
 Pour la version publiée : HACS → Dépôts personnalisés →
 `https://github.com/Euro-Locks-Belgium/ha-planning-card`, catégorie Dashboard.
-Mettre à jour **Planning** vers **v0.9.0**, puis recharger complètement le navigateur
+Mettre à jour **Planning** vers **v0.9.1**, puis recharger complètement le navigateur
 ou l’application Home Assistant.
 La ressource est `/hacsfiles/ha-planning-card/ha-planning-card.js`, type Module JavaScript.
 Le type historique `custom:ha-planning-chauffe-card` reste disponible.
@@ -176,6 +176,12 @@ L’en-tête occupe deux lignes : titre/actions/statut, puis mois et année avec
 navigation et les vues. Sur les petites cartes, Réglages et Aujourd’hui deviennent
 des icônes ; les commandes passent sur une ligne supplémentaire si nécessaire.
 Le survol assombrit les événements en conservant leur couleur.
+
+**Depuis la v0.9.1** : les journées précédant aujourd’hui
+ont un fond plus sombre dans les vues Mois, Semaine et Agenda. Les couleurs des
+programmations passées sont atténuées en gardant un texte contrasté. La date
+utilisée est celle du fuseau Home Assistant ; un créneau encore en cours garde
+sa couleur habituelle, même s’il a commencé la veille.
 
 Le calendrier utilise la densité **Compacte** par défaut, réduit la
 hauteur des cases et l’échelle horaire de la vue Semaine. Les lignes du mois

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.1 — 2026-11-10
+
+- Journées passées plus sombres en Mois, Semaine et Agenda, selon la date du fuseau Home Assistant.
+- Couleurs des programmations passées atténuées avec contraste du texte recalculé ; créneaux en cours conservés visuellement.
+- Styles Rempli, Contour et Point conservés ; vérification en thèmes sombre et clair et sur mobile.
+- Guide de récupération du fichier `local_calendar.*.ics`, avec affichage de `.storage` dans File editor.
+
 ## 0.9.0 — 2026-11-09
 
 - Modification de série conservant les jours déjà déplacés et supprimés, sans limite au mois affiché.

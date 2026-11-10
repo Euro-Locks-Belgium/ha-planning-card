@@ -1,4 +1,4 @@
-# Conservation des exceptions — carte 0.9.0
+# Conservation des exceptions — carte 0.9.1
 
 Tout est géré par la carte JavaScript, dans le même Calendrier local. Aucun
 complément, nouvelle intégration ou conteneur n’est nécessaire. Le blueprint
@@ -38,6 +38,33 @@ Pour une série créée avant cette version, un administrateur effectue une repr
 2. Dans la carte, cliquer sur une occurrence habituelle puis choisir **Toute la série**.
 3. Utiliser **Importer les exceptions existantes** et sélectionner ce fichier `.ics`.
 4. Vérifier la date de début, les jours et les horaires, puis **Enregistrer la série**.
+
+### Télécharger le fichier avec File editor
+
+Home Assistant stocke chaque Calendrier local dans
+`/config/.storage/local_calendar.<clé>.ics`, par exemple
+`/config/.storage/local_calendar.planning.ics`. Le nom exact dépend de la clé
+enregistrée à la création du calendrier.
+
+File editor masque `.storage` dans sa configuration par défaut :
+
+1. Ouvrir la **Configuration** de File editor. Dans la liste `ignore_pattern`,
+   retirer uniquement la ligne `.storage`, puis enregistrer et redémarrer File editor.
+2. Ouvrir son interface et le dossier `.storage` à la racine des fichiers de
+   configuration Home Assistant. Selon le contexte de l’éditeur, cette racine
+   peut être affichée sous `/config` ou `/homeassistant`.
+3. Repérer le fichier `local_calendar.*.ics` du calendrier utilisé par la carte
+   et en **télécharger une copie**, sans modifier l’original.
+4. Dans la carte : ouvrir une programmation → **Toute la série** →
+   **Importer les exceptions existantes** → choisir la copie → enregistrer.
+
+Le même fichier complet peut servir à reprendre les différentes anciennes séries
+de ce calendrier, une série à la fois. Une copie récupérée via un autre accès aux
+fichiers Home Assistant convient également ; File editor n’est pas nécessaire au
+fonctionnement de la carte.
+
+Sources : [emplacement officiel des fichiers du Calendrier local](https://github.com/home-assistant/core/blob/2026.10.4/homeassistant/components/local_calendar/const.py)
+et [configuration par défaut de File editor](https://github.com/home-assistant/addons/blob/master/configurator/config.yaml).
 
 Le fichier est lu dans le navigateur. Seule la série sélectionnée est reprise.
 Les `EXDATE`, les occurrences déplacées et leurs descriptions sont conservés,
